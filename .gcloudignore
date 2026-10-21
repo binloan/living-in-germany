@@ -1,0 +1,29 @@
+# Deploy only what runs: server/, dist/ (vite build), cities/cities.json and each city's city.json and generated/, package files, app.yaml
+# Patterns start with "/" so they match at the project root only: a bare `index.html` would also drop dist/index.html.
+/.gcloudignore
+.git
+.gitignore
+.env
+.env.*
+/.impeccable/
+/.claude/
+node_modules/
+/src/
+/scripts/
+/public/
+/cities/*/raw/
+/cities/*/cache/
+/cities/*/runtime/
+/cities/*/seed/
+/cities/*/sources/
+/cities/*/steps/
+/cities/*/test/
+/cities/ratings/
+/cities/.gitignore
+/cities/*.md
+/cities.example/
+/*.md
+/tsconfig.json
+/vite.config.ts
+/index.html
+/app.yaml.example

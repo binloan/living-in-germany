@@ -1,0 +1,38 @@
+{
+  "transit_access": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "safety": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "calm": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "building_age": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "density": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "wohnlage": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "amenities": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "restaurants": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "landmarks": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "pop_age": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "green": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  },
+  "center": {
+    "info": "A made-up number for the demo city, not a measurement. In a real city this text says where the data comes from and how the number is made."
+  }
+}

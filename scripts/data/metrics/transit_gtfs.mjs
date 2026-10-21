@@ -1,0 +1,384 @@
+// The city's GTFS feed (pipeline.gtfs of its manifest) -> transit-lines.json, stations.json, metric transit_access.
+import fs from 'node:fs';
+import path from 'node:path';
+import readline from 'node:readline';
+import { parse } from 'csv-parse/sync';
+import { CITY, RAW, GEN, download, loadCells, writeMetric, writeJson } from '../lib.mjs';
+import { unzipTo } from './transit_unzip.mjs';
+import { distM, buildGrid, multimodalAccess, routeMode } from './transit_lib.mjs';
+
+const GTFS = CITY.pipeline.gtfs;
+const GTFS_URL = GTFS.url;
+const ZIP = path.join(RAW, GTFS.dir, 'GTFS.zip');
+const DIR = path.join(RAW, GTFS.dir, 'gtfs');
+// stops outside this box are dropped
+const BBOX = { minLat: GTFS.bbox.s, maxLat: GTFS.bbox.n, minLon: GTFS.bbox.w, maxLon: GTFS.bbox.e };
+const inBbox = (lat, lon) => lat >= BBOX.minLat && lat <= BBOX.maxLat && lon >= BBOX.minLon && lon <= BBOX.maxLon;
+const DEFAULT_COLOR = { S: '#008D4F', U: '#0065AE', T: '#D81E05', R: '#E3001B' };
+const MODE_ORDER = { S: 0, U: 1, T: 2, R: 3 };
+// which route type codes of the feed are which kind of line: pipeline.gtfs.routeTypes of the manifest
+if (!GTFS.routeTypes) throw new Error('pipeline.gtfs.routeTypes is missing in the manifest: which route types of the feed are S, U, T and R lines');
+const modeOf = (t) => routeMode(GTFS.routeTypes, t);
+
+// ---------- download + unzip
+await download(GTFS_URL, ZIP);
+if (!fs.existsSync(path.join(DIR, 'stop_times.txt'))) {
+  console.log('unzipping GTFS ...');
+  await unzipTo(ZIP, DIR);
+}
+const readCsv = (f) => parse(fs.readFileSync(path.join(DIR, f)), { columns: true, skip_empty_lines: true, bom: true, relax_column_count: true });
+
+// ---------- routes / trips
+const routeInfo = new Map(); // route_id -> { mode, name, color }
+for (const r of readCsv('routes.txt')) {
+  const mode = modeOf(Number(r.route_type));
+  if (!mode) continue;
+  routeInfo.set(r.route_id, { mode, name: r.route_short_name, color: (r.route_color || '').replace('#', '').toUpperCase() });
+}
+const groups = []; // line groups: { key, mode, name, color }
+const groupIdx = new Map();
+const routeGroup = new Map();
+for (const [rid, r] of routeInfo) {
+  const key = r.mode + '|' + r.name;
+  let gi = groupIdx.get(key);
+  if (gi == null) { gi = groups.length; groupIdx.set(key, gi); groups.push({ key, mode: r.mode, name: r.name, color: '' }); }
+  if (!groups[gi].color && /^[0-9A-F]{6}$/.test(r.color)) groups[gi].color = '#' + r.color;
+  routeGroup.set(rid, gi);
+}
+const tripInfo = new Map(); // trip_id -> { g, service, active }
+const shapeCount = new Map(); // g -> dir -> shape_id -> count
+for (const t of readCsv('trips.txt')) {
+  const g = routeGroup.get(t.route_id);
+  if (g == null) continue;
+  tripInfo.set(t.trip_id, { g, service: t.service_id, active: false });
+  if (t.shape_id) {
+    const d = shapeCount.get(g) || new Map();
+    shapeCount.set(g, d);
+    const dk = t.direction_id || '0';
+    const m = d.get(dk) || new Map();
+    d.set(dk, m);
+    m.set(t.shape_id, (m.get(t.shape_id) || 0) + 1);
+  }
+}
+console.log(`rail-ish routes ${routeInfo.size}, line groups ${groups.length}, trips ${tripInfo.size}`);
+
+// ---------- representative Tuesday
+const cal = readCsv('calendar.txt');
+const calDates = readCsv('calendar_dates.txt');
+const ymd = (d) => d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+const parseYmd = (n) => new Date(Date.UTC(Math.floor(n / 10000), Math.floor(n / 100) % 100 - 1, n % 100));
+const exceptions = new Map(); // date -> {add:Set, rem:Set}
+for (const c of calDates) {
+  const d = Number(c.date);
+  const e = exceptions.get(d) || { add: new Set(), rem: new Set() };
+  exceptions.set(d, e);
+  (c.exception_type === '1' ? e.add : e.rem).add(c.service_id);
+}
+const tripsPerService = new Map();
+for (const t of tripInfo.values()) tripsPerService.set(t.service, (tripsPerService.get(t.service) || 0) + 1);
+function activeServices(dateNum) {
+  const dow = parseYmd(dateNum).getUTCDay(); // 0=Sun
+  const col = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dow];
+  const s = new Set();
+  for (const c of cal) if (c[col] === '1' && Number(c.start_date) <= dateNum && dateNum <= Number(c.end_date)) s.add(c.service_id);
+  const e = exceptions.get(dateNum);
+  if (e) { e.add.forEach((x) => s.add(x)); e.rem.forEach((x) => s.delete(x)); }
+  return s;
+}
+const minD = Math.min(...cal.map((c) => Number(c.start_date))), maxD = Math.max(...cal.map((c) => Number(c.end_date)));
+const tuesdays = [];
+for (let d = parseYmd(minD); ymd(d) <= maxD; d = new Date(d.getTime() + 864e5)) {
+  if (d.getUTCDay() !== 2) continue;
+  const n = ymd(d);
+  let cnt = 0;
+  for (const sid of activeServices(n)) cnt += tripsPerService.get(sid) || 0;
+  if (cnt > 0) tuesdays.push({ n, cnt });
+}
+const sortedCnt = [...tuesdays].sort((a, b) => a.cnt - b.cnt);
+const median = sortedCnt[Math.floor(sortedCnt.length / 2)].cnt;
+const chosen = tuesdays.filter((t) => t.cnt >= median * 0.97 && t.cnt <= median * 1.03)
+  .sort((a, b) => Math.abs(a.n - 20261015) - Math.abs(b.n - 20261015))[0] || sortedCnt[Math.floor(sortedCnt.length / 2)];
+console.log(`feed validity ${minD}-${maxD}; ${tuesdays.length} Tuesdays, median rail trips ${median}; representative Tuesday ${chosen.n} (${chosen.cnt} trips)`);
+const svc = activeServices(chosen.n);
+for (const t of tripInfo.values()) t.active = svc.has(t.service);
+
+// ---------- stops
+const stops = new Map();
+for (const s of readCsv('stops.txt')) {
+  stops.set(s.stop_id, { id: s.stop_id, name: s.stop_name, lat: Number(s.stop_lat), lon: Number(s.stop_lon), parent: s.parent_station || '', type: s.location_type });
+}
+
+// ---------- stream stop_times
+const depCount = new Map();  // stop_id -> Map(group idx -> departures in window on the active day)
+const stopGroups = new Map(); // stop_id -> Set(group idx) (all days)
+const W0 = 7 * 3600, W1 = 19 * 3600;
+{
+  let curTrip = null, curInfo = null, rows = [];
+  const flush = () => {
+    if (!curInfo || !rows.length) return;
+    for (const r of rows) {
+      let s = stopGroups.get(r[0]);
+      if (!s) stopGroups.set(r[0], (s = new Set()));
+      s.add(curInfo.g);
+    }
+    if (curInfo.active) {
+      for (let i = 0; i < rows.length - 1; i++) {
+        const [sid, dep] = rows[i];
+        if (dep >= W0 && dep < W1) {
+          let m = depCount.get(sid);
+          if (!m) depCount.set(sid, (m = new Map()));
+          m.set(curInfo.g, (m.get(curInfo.g) || 0) + 1);
+        }
+      }
+    }
+  };
+  const rl = readline.createInterface({ input: fs.createReadStream(path.join(DIR, 'stop_times.txt'), { highWaterMark: 1 << 20 }), crlfDelay: Infinity });
+  let first = true, n = 0;
+  for await (const line of rl) {
+    if (first) { first = false; continue; }
+    n++;
+    const i = line.indexOf(',');
+    const tid = line.slice(0, i);
+    if (tid !== curTrip) { flush(); curTrip = tid; curInfo = tripInfo.get(tid); rows = []; }
+    if (!curInfo) continue;
+    const j = line.indexOf(',', i + 1);
+    let sid = line.slice(i + 1, j);
+    if (sid.charCodeAt(0) === 34) sid = sid.slice(1, -1);
+    const dt = line.slice(line.lastIndexOf(',') + 1).trim();
+    const p = dt.split(':');
+    rows.push([sid, p.length === 3 ? (+p[0]) * 3600 + (+p[1]) * 60 + (+p[2]) : -1]);
+  }
+  flush();
+  console.log(`stop_times lines ${n}; stops with rail service ${stopGroups.size}; stops with departures ${depCount.size}`);
+}
+
+// ---------- transit_access
+const TRANSIT_NOTE = 'Multimodal transit-access score. For every hex centre and every line (a mode plus line name, e.g. S|S7, U|U2, T|M4, R|RE1) the best stop within 1,000 m (a 12 minute walk) that has departures of that line between 07:00 and 19:00 on a typical Tuesday of the feed is chosen; its departures per hour (count / 12, capped at 12 per line) are multiplied by a mode weight (regional rail 2.5, S-Bahn 1.5, U-Bahn 1.5, tram 1.0) and by a distance factor that is 1 up to 250 m and then falls linearly to 0 at 1,000 m. The score is the sum over all lines plus a bonus of 5 points for every additional distinct mode beyond the first among the contributing lines (0 when only one mode), so a station with tram, S-Bahn, U-Bahn and regional services scores far higher than one frequent line; cells without service score 0. VBB GTFS.';
+const cells = loadCells();
+const entries = []; // one per (stop, line group) with departures in the window
+for (const [sid, m] of depCount) {
+  const st = stops.get(sid);
+  if (!st || !inBbox(st.lat, st.lon)) continue;
+  for (const [g, c] of m) entries.push({ lat: st.lat, lon: st.lon, g, mode: groups[g].mode, dph: c / 12, sid });
+}
+console.log(`access: ${entries.length} (stop, line group) entries`);
+const access = multimodalAccess(cells, entries, { radiusM: 1000, plateauM: 250, cap: 12 });
+writeMetric('transit_access', access.out, {
+  unit: 'pts',
+  note: TRANSIT_NOTE,
+});
+if (process.env.TRANSIT_DEBUG) {
+  fs.writeFileSync(process.env.TRANSIT_DEBUG, JSON.stringify({ groups: groups.map((g) => g.key), entries }));
+}
+
+// ---------- stations
+const cleanName = (raw) => {
+  let n = raw.trim();
+  n = n.replace(/^(S\+U|S|U)\s+/, '');
+  n = n.replace(/\s*\((Berlin|Potsdam)\)\s*$/i, '');
+  n = n.replace(/,\s*Berlin$/i, '');
+  n = n.replace(/^(Berlin|Potsdam),\s*/i, '');
+  n = n.replace(/\s+(Bhf|Bf)(?=\/|$)/, '').replace(/\s*\(Berlin\)/i, '');
+  return n.trim();
+};
+const keyName = (n) => n.split('/')[0].trim().toLowerCase();
+const stopModes = (sid) => new Set([...(stopGroups.get(sid) || [])].map((g) => groups[g].mode));
+const clusters = new Map(); // cluster key -> { members:[stop], lat, lon, name, modes:Set, lines:Set }
+for (const sid of stopGroups.keys()) {
+  const s = stops.get(sid);
+  if (!s || !inBbox(s.lat, s.lon)) continue;
+  const key = s.parent && stops.has(s.parent) ? s.parent : sid;
+  let c = clusters.get(key);
+  if (!c) {
+    const anchor = stops.get(key);
+    c = { key, anchor, members: [], groups: new Set() };
+    clusters.set(key, c);
+  }
+  c.members.push(s);
+  stopGroups.get(sid).forEach((g) => c.groups.add(g));
+}
+// compute position + display name per cluster
+let list = [...clusters.values()].map((c) => {
+  const a = c.anchor && c.anchor.type === '1' ? c.anchor : null;
+  const lat = a ? a.lat : c.members.reduce((x, m) => x + m.lat, 0) / c.members.length;
+  const lon = a ? a.lon : c.members.reduce((x, m) => x + m.lon, 0) / c.members.length;
+  const rawName = (a || c.members[0]).name;
+  const name = cleanName(rawName);
+  return { lat, lon, name, key: keyName(name), groups: c.groups, n: c.members.length, hasParent: !!a };
+});
+// merge same-name clusters within 150 m (union-find)
+const par = list.map((_, i) => i);
+const find = (i) => (par[i] === i ? i : (par[i] = find(par[i])));
+const grid = buildGrid(list);
+list.forEach((c, i) => {
+  grid.query(c.lat, c.lon, 150, (j) => { if (j !== i && list[j].key === c.key) par[find(j)] = find(i); });
+});
+const merged = new Map();
+list.forEach((c, i) => {
+  const r = find(i);
+  const m = merged.get(r) || { items: [] };
+  merged.set(r, m);
+  m.items.push(c);
+});
+const lineOrder = (a, b) => {
+  const ga = groups[a], gb = groups[b];
+  if (ga.mode !== gb.mode) return MODE_ORDER[ga.mode] - MODE_ORDER[gb.mode];
+  return ga.name.localeCompare(gb.name, 'de', { numeric: true });
+};
+const stationRows = [];
+for (const m of merged.values()) {
+  const best = m.items.sort((a, b) => (b.hasParent - a.hasParent) || (b.n - a.n))[0];
+  const gs = new Set();
+  m.items.forEach((c) => c.groups.forEach((g) => gs.add(g)));
+  const sorted = [...gs].sort(lineOrder);
+  const modes = ['S', 'U', 'T', 'R'].filter((x) => sorted.some((g) => groups[g].mode === x)).join('');
+  // prefer short display name of the best item (drop "/street" suffix only when merged from several)
+  const name = m.items.length > 1 ? best.name.split('/')[0].trim() : best.name;
+  stationRows.push([+best.lat.toFixed(5), +best.lon.toFixed(5), name, modes, [...new Set(sorted.map((g) => groups[g].name))]]);
+}
+stationRows.sort((a, b) => a[2].localeCompare(b[2], 'de'));
+writeJson(path.join(GEN, 'stations.json'), { fields: ['lat', 'lon', 'name', 'modes', 'lines'], stops: stationRows });
+console.log(`stations: ${stationRows.length}`);
+
+// ---------- line geometry
+const KX = 111195 * Math.cos(52.5 * Math.PI / 180), KY = 111195;
+const proj = (p) => [(p[0] - 13.4) * KX, (p[1] - 52.5) * KY]; // p = [lon, lat]
+const selected = new Map(); // shape_id -> { g, count }
+for (const [g, dirs] of shapeCount) {
+  for (const m of dirs.values()) {
+    const arr = [...m.entries()].sort((a, b) => b[1] - a[1]);
+    const top = arr[0][1];
+    arr.filter(([, c], i) => i === 0 || (c >= top * 0.1 && i < 5)).forEach(([sid, c]) => {
+      const prev = selected.get(sid);
+      selected.set(sid, { g, count: (prev?.count || 0) + c });
+    });
+  }
+}
+const shapePts = new Map();
+{
+  const rl = readline.createInterface({ input: fs.createReadStream(path.join(DIR, 'shapes.txt'), { highWaterMark: 1 << 20 }), crlfDelay: Infinity });
+  let first = true;
+  for await (const line of rl) {
+    if (first) { first = false; continue; }
+    const i = line.indexOf(',');
+    let sid = line.slice(0, i);
+    if (sid.charCodeAt(0) === 34) sid = sid.slice(1, -1);
+    if (!selected.has(sid)) continue;
+    const p = line.split(',');
+    const lat = +p[1].replace(/"/g, ''), lon = +p[2].replace(/"/g, ''), seq = +p[3].replace(/"/g, '');
+    let a = shapePts.get(sid);
+    if (!a) shapePts.set(sid, (a = []));
+    a.push([lon, lat, seq]);
+  }
+}
+console.log(`shapes selected ${selected.size}, loaded ${shapePts.size}`);
+
+/** densify polyline (lon/lat points) to <= step metres; returns [[lon,lat],...] */
+function densify(pts, step) {
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = proj(pts[i - 1]), b = proj(pts[i]);
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const k = Math.ceil(d / step);
+    for (let j = 1; j < k; j++) {
+      const t = j / k;
+      out.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t]);
+    }
+    out.push(pts[i]);
+  }
+  return out;
+}
+function dp(pts, tol) { // Douglas-Peucker in metres
+  if (pts.length < 3) return pts;
+  const P = pts.map(proj);
+  const keep = new Uint8Array(pts.length);
+  keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [s, e] = stack.pop();
+    let maxD = 0, idx = -1;
+    const [ax, ay] = P[s], [bx, by] = P[e];
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    for (let i = s + 1; i < e; i++) {
+      let d;
+      if (L2 === 0) d = Math.hypot(P[i][0] - ax, P[i][1] - ay);
+      else {
+        const t = Math.max(0, Math.min(1, ((P[i][0] - ax) * dx + (P[i][1] - ay) * dy) / L2));
+        d = Math.hypot(P[i][0] - (ax + t * dx), P[i][1] - (ay + t * dy));
+      }
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD > tol && idx > 0) { keep[idx] = 1; stack.push([s, idx], [idx, e]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+
+const byGroup = new Map(); // g -> [{sid,count}]
+for (const [sid, { g, count }] of selected) {
+  if (!shapePts.has(sid)) continue;
+  const a = byGroup.get(g) || [];
+  byGroup.set(g, a);
+  a.push({ sid, count });
+}
+const features = [];
+const COVER = 12, CELL = 15;
+for (const [g, arr] of byGroup) {
+  arr.sort((a, b) => b.count - a.count);
+  const covered = new Map(); // grid of accepted sample points
+  const isCovered = (p) => {
+    const [x, y] = proj(p);
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    for (let i = cx - 1; i <= cx + 1; i++) for (let j = cy - 1; j <= cy + 1; j++) {
+      const a = covered.get(i * 100003 + j);
+      if (a) for (const q of a) if ((q[0] - x) ** 2 + (q[1] - y) ** 2 <= COVER * COVER) return true;
+    }
+    return false;
+  };
+  const addCovered = (p) => {
+    const [x, y] = proj(p);
+    const k = Math.floor(x / CELL) * 100003 + Math.floor(y / CELL);
+    const a = covered.get(k) || [];
+    covered.set(k, a);
+    a.push([x, y]);
+  };
+  const lines = [];
+  for (const { sid } of arr) {
+    const raw = shapePts.get(sid).sort((a, b) => a[2] - b[2]).map((p) => [p[0], p[1]]);
+    // clip: split into runs of in-bbox points (shape vertices are dense enough for rail; densify later)
+    const runs = [];
+    let cur = [];
+    for (const p of raw) {
+      if (inBbox(p[1], p[0])) cur.push(p);
+      else { if (cur.length > 1) runs.push(cur); cur = []; }
+    }
+    if (cur.length > 1) runs.push(cur);
+    for (const run of runs) {
+      const dense = densify(run, 10);
+      const flags = dense.map((p) => isCovered(p));
+      let i = 0;
+      const newPts = [];
+      while (i < dense.length) {
+        if (flags[i]) { i++; continue; }
+        let j = i;
+        while (j < dense.length && !flags[j]) j++;
+        const s = Math.max(0, i - 1), e = Math.min(dense.length - 1, j);
+        const seg = dense.slice(s, e + 1);
+        if (j - i >= 2) lines.push(seg);
+        for (let k = i; k < j; k++) newPts.push(dense[k]);
+        i = j;
+      }
+      newPts.forEach(addCovered);
+    }
+  }
+  const coords = lines.map((l) => dp(l, 15).map((p) => [+p[0].toFixed(5), +p[1].toFixed(5)])).filter((l) => l.length >= 2);
+  if (!coords.length) continue;
+  const grp = groups[g];
+  features.push({
+    type: 'Feature',
+    properties: { mode: grp.mode, name: grp.name, color: grp.color || DEFAULT_COLOR[grp.mode] },
+    geometry: { type: 'MultiLineString', coordinates: coords },
+  });
+}
+features.sort((a, b) => (MODE_ORDER[a.properties.mode] - MODE_ORDER[b.properties.mode]) || a.properties.name.localeCompare(b.properties.name, 'de', { numeric: true }));
+writeJson(path.join(GEN, 'transit-lines.json'), { type: 'FeatureCollection', features });
+console.log(`lines: ${features.length} features (${['S', 'U', 'T', 'R'].map((m) => m + ':' + features.filter((f) => f.properties.mode === m).length).join(' ')})`);

@@ -1,0 +1,49 @@
+{
+  "id": "example",
+  "name": "Exampleton",
+  "municipalities": ["Exampleton", "Sampleburg"],
+  "routing": {},
+  "bbox": { "w": 9.88, "s": 49.93, "e": 10.29, "n": 50.07 },
+  "map": {
+    "center": [10.0, 50.0],
+    "bounds": [9.89, 49.94, 10.28, 50.06],
+    "fallbackBox": [9.92, 49.96, 10.25, 50.04]
+  },
+  "search": { "lat": 50.0, "lon": 10.0 },
+  "centre": { "name": "Exampleton, Central", "lat": 50.0, "lon": 10.0 },
+  "commutePresets": [
+    { "name": "Exampleton Central", "lat": 50.0, "lon": 10.0 },
+    { "name": "Sampleburg Central", "lat": 49.9865, "lon": 10.21 }
+  ],
+  "modes": { "S": "S-Bahn", "U": "Metro", "T": "Tram", "R": "Regional" },
+  "texts": {
+    "timetable": "made-up timetable",
+    "centreWhere": "the centre of Exampleton",
+    "centrePlace": "Central",
+    "centreExtra": " Sampleburg is measured against Exampleton too.",
+    "zoneKinds": "a made-up district",
+    "zoneNames": "district",
+    "rentGaps": "",
+    "modeList": "S-Bahn, metro, tram and regional"
+  },
+  "splash": {
+    "quips": ["Counting the bakeries of Exampleton…", "Asking the made-up locals about the neighbourhood…", "Reminding you that these numbers are invented…"],
+    "pokes": ["suspicious bakery", "metro right below", "entirely fictional"]
+  },
+  "pipeline": {
+    "zones": "steps/zones.mjs",
+    "gtfs": {
+      "url": "https://example.org/gtfs.zip",
+      "dir": "example",
+      "bbox": { "w": 9.88, "s": 49.93, "e": 10.29, "n": 50.07 },
+      "routeTypes": { "S": [109], "U": [400], "T": [900], "R": [[100, 199]] }
+    },
+    "steps": [
+      "steps/areas.mjs",
+      "steps/transit.mjs",
+      "metrics/geo_center.mjs",
+      "steps/metrics.mjs"
+    ]
+  },
+  "prices": { "collection": "rent_prices", "database": "prices" }
+}

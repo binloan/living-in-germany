@@ -1,0 +1,199 @@
+[
+  {
+    "id": "transit_access",
+    "label": "Transit access",
+    "unit": "pts",
+    "better": "higher",
+    "transform": "log",
+    "decimals": 0,
+    "scale": [
+      0,
+      50
+    ],
+    "weight": 85,
+    "hint": "Lines, modes and frequency within a 12 min walk",
+    "info": "How many ways out you have on foot. Counts {modeList} lines within 1,000 m (a 12 minute walk), weighted by weekday frequency (regional counts most, then S/U, then tram) and by distance: full weight up to 250 m, fading to nothing at 1,000 m. A bonus for every extra transit type. Buses are not counted. 0 means no such stop within 1,000 m. Many lines beat one frequent line. Source: {timetable}.",
+    "note": "Lines within 1 km, weighted by frequency, type and distance."
+  },
+  {
+    "id": "commute",
+    "label": "Commute Time",
+    "unit": "min",
+    "better": "lower",
+    "decimals": 0,
+    "weight": 60,
+    "dynamic": true,
+    "hint": "Weighted time to your pinned places",
+    "info": "Door-to-door travel time from a spot to each of your commute places, combined by the importance you set. The faster the better: 100 points at 10 min, 50 at 45 min, 0 at 90 min. Timetable of the next weekday, arriving 09:00, walking included. Only walking and trains count: {modeList} lines. Long-distance trains (ICE, IC), buses and ferries are left out, so every trip fits a Deutschlandticket. Each transfer counts as 6 extra minutes, so direct trains win. Source: Transitous / {timetable}."
+  },
+  {
+    "id": "center",
+    "label": "City centre",
+    "unit": "km",
+    "better": "lower",
+    "scale": [
+      3,
+      16
+    ],
+    "decimals": 1,
+    "weight": 70,
+    "hint": "Distance to {centreWhere}",
+    "info": "Straight-line distance to {centreWhere} ({centrePlace}).{centreExtra} Closer scores higher: 100 within 3 km, 0 from 16 km. This keeps the ranking from favouring cheap, green outskirts and points to the in-between spots, close enough to the city yet not in its middle.",
+    "note": "Straight-line distance to {centrePlace}."
+  },
+  {
+    "id": "price",
+    "label": "Rent Price",
+    "unit": "€/mo",
+    "better": "lower",
+    "decimals": 0,
+    "weight": 85,
+    "dynamic": true,
+    "hint": "Average rent from the prices people report",
+    "info": "Average rent, from prices people put on the map as euros per m² (click the map, enter a price from a source you trust). Everyone sees the same prices. A price counts for its whole area: {zoneKinds}. Several reports in one area are averaged. The score uses the price per m², so the size of your flat never changes the ranking; the size you expect (Profile tab) only turns it into the monthly rent shown. To stay fair, rent only counts in the overall score once EVERY area has a price; until then the layer shows which areas still need one.{rentGaps} Cheaper is better: 100 points at 10 €/m² or less, 0 at 25 €/m² or more."
+  },
+  {
+    "id": "safety",
+    "label": "Safety",
+    "unit": "/100k",
+    "better": "lower",
+    "decimals": 0,
+    "scale": [
+      4000,
+      16000
+    ],
+    "weight": 90,
+    "hint": "Offences per 100,000 residents"
+  },
+  {
+    "id": "calm",
+    "label": "Calmness",
+    "unit": "dB",
+    "better": "lower",
+    "decimals": 0,
+    "scale": [
+      40,
+      60
+    ],
+    "weight": 50,
+    "hint": "Average traffic noise at the facades (dB Lden)"
+  },
+  {
+    "id": "building_age",
+    "label": "Building Age",
+    "unit": "",
+    "better": "higher",
+    "decimals": 0,
+    "scale": [
+      1920,
+      2000
+    ],
+    "weight": 30,
+    "fmt": "year",
+    "hint": "Average year built, newer is better"
+  },
+  {
+    "id": "density",
+    "label": "Density",
+    "unit": "/ha",
+    "better": "lower",
+    "decimals": 0,
+    "scale": [
+      0,
+      180
+    ],
+    "weight": 25,
+    "hint": "Residents per hectare"
+  },
+  {
+    "id": "wohnlage",
+    "label": "Residential quality",
+    "unit": "/100",
+    "better": "higher",
+    "decimals": 0,
+    "scale": [
+      0,
+      100
+    ],
+    "weight": 60,
+    "hint": "Mietspiegel Wohnlage index"
+  },
+  {
+    "id": "amenities",
+    "label": "Amenities",
+    "unit": "pts",
+    "better": "higher",
+    "decimals": 0,
+    "scale": [
+      0,
+      35
+    ],
+    "weight": 55,
+    "hint": "Shops, pharmacy, cafés within 800 m",
+    "info": "Daily needs within 800 m: supermarkets, bakeries, pharmacies, cafés, restaurants, doctors, post office, library, kindergartens. Each category is capped so one type cannot dominate. Source: OpenStreetMap, so it reflects how well the area is mapped.",
+    "note": "Daily-needs places within 800 m, each type capped."
+  },
+  {
+    "id": "restaurants",
+    "label": "Restaurants",
+    "unit": "pts",
+    "better": "higher",
+    "transform": "log",
+    "decimals": 0,
+    "scale": [
+      0,
+      20
+    ],
+    "weight": 40,
+    "hint": "How many restaurants, and how good",
+    "info": "Restaurants within 600 m (OpenStreetMap), multiplied by how well rated the best restaurants of the area are: the average rating of the 20 most popular ones, from the ratings service chosen when the data was built (named in Sources). Many places of high quality score most; a few average places score little. The ratings were fetched once and only this per-area average is kept. Zero means no restaurant mapped nearby.",
+    "note": "Restaurants within 600 m, times how well rated the area’s best ones are."
+  },
+  {
+    "id": "landmarks",
+    "label": "Landmarks",
+    "unit": "pts",
+    "better": "higher",
+    "transform": "log",
+    "decimals": 1,
+    "weight": 30,
+    "hint": "Famous places within 1 km",
+    "info": "How close the famous places are, the landmark pins of the map. Each counts fully within 250 m and fades to nothing at 1,000 m, like the transit stops; the big names (Brandenburger Tor, Fernsehturm, Sanssouci ...) count most, local ones less. 0 means no landmark within 1,000 m, which is the case for most of the outskirts. Source: Wikipedia positions of a hand-picked list.",
+    "scale": [
+      0,
+      1.5
+    ],
+    "note": "Landmarks within 1 km, fading with distance."
+  },
+  {
+    "id": "pop_age",
+    "label": "Population Age",
+    "unit": "yr",
+    "better": "lower",
+    "decimals": 1,
+    "scale": [
+      37,
+      50
+    ],
+    "weight": 0,
+    "overlay": true,
+    "prefix": "Ø ",
+    "hint": "Mean age of residents"
+  },
+  {
+    "id": "green",
+    "label": "Green space",
+    "unit": "%",
+    "better": "higher",
+    "decimals": 0,
+    "scale": [
+      0,
+      100
+    ],
+    "weight": 0,
+    "overlay": true,
+    "hint": "Green and water within 500 m",
+    "info": "Share of the 500 m circle around the hex centre covered by parks, forest, meadows, gardens, cemeteries and water (OpenStreetMap). Street trees are not counted. Map overlay only, not part of Fit.",
+    "note": "Share of the 500 m around a spot that is green or water."
+  }
+]

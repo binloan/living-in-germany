@@ -1,0 +1,9 @@
+{
+  "source": { "name": "Where the starting rents come from", "url": "https://example.org/rents", "note": "Check the terms of the source before you publish figures taken from it." },
+  "unit": "EUR per m² and month",
+  "zones": [
+    { "zone": "<seedKey of a zone>", "value": 12.5 },
+    { "zone": "<seedKey of another zone>", "value": 11.0, "approx": "no figure of its own: the closest published one" }
+  ],
+  "noData": { "<seedKey of a zone with no published rent>": "why no rent exists here" }
+}

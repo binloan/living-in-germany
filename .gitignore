@@ -1,0 +1,35 @@
+# deps / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# project settings and secrets
+.env
+.env.*
+!.env.example
+app.yaml
+.gcloud/
+*.local
+
+# the cities (data, source steps, their tests): their own, private repository, cloned here. cities.example/ shows the layout
+/cities/
+
+# private notes: maintainer docs and the agent files
+*.private.md
+DESIGN.md
+PRODUCT.md
+CLAUDE.md
+AGENTS.md
+
+# ratings providers you wrote for yourself (ratings/template.mjs shows the contract)
+scripts/data/ratings/local/
+
+# tooling
+.impeccable/
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+npm-debug.log*
+*.log

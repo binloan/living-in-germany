@@ -1,0 +1,59 @@
+{
+  "name": "berlin-transport",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#data/*": "./scripts/data/*"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node server/index.js --dev",
+    "build": "vite build",
+    "gcp-build": "echo dist is prebuilt locally and uploaded",
+    "start": "node server/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-transform-types --no-warnings --import ./test/helpers/register.mjs --test \"test/*.test.mjs\"",
+    "test:cities": "node --experimental-transform-types --no-warnings --import ./test/helpers/register.mjs --test \"cities/*/test/*.test.mjs\"",
+    "data": "node scripts/data/build.mjs",
+    "data:images": "node scripts/data/03-images.mjs",
+    "data:pois": "node scripts/data/04-pois.mjs",
+    "data:ratings": "node scripts/data/05-ratings.mjs",
+    "gen:appyaml": "node scripts/gen-app-yaml.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:quick": "node scripts/deploy.mjs --skip-setup",
+    "deploy:setup": "node scripts/gcp-setup.mjs",
+    "seed:prices": "node scripts/seed-prices.mjs"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^9.3.1",
+    "compression": "^1.8.2",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "h3-js": "^4.5.0"
+  },
+  "devDependencies": {
+    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/geo-layers": "^9.4.0",
+    "@deck.gl/layers": "^9.4.0",
+    "@deck.gl/mapbox": "^9.4.0",
+    "@fontsource-variable/hanken-grotesk": "^5.3.0",
+    "@turf/turf": "^7.4.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "csv-parse": "^7.0.3",
+    "deck.gl": "^9.4.0",
+    "exceljs": "^4.4.0",
+    "fflate": "^0.8.3",
+    "maplibre-gl": "^5.24.0",
+    "topojson-client": "^3.1.0",
+    "topojson-server": "^3.0.1",
+    "typescript": "^7.0.2",
+    "undici": "^8.12.2",
+    "vite": "^8.3.4"
+  },
+  "license": "MIT",
+  "author": "Jonathan Berner"
+}
