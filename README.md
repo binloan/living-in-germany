@@ -18,6 +18,8 @@ npm test                    # tests: scoring, data pipeline helpers, server, cli
 npm run test:cities         # the tests that live with your cities (cities/<id>/test/), if you wrote any
 ```
 
+AI coding agents: start with [AGENTS.md](AGENTS.md).
+
 For your own city, copy `cities.example/` to `cities/` and replace its steps with ones that read real sources (see [ADDING_A_CITY.md](ADDING_A_CITY.md)), then `npm run data -- --all` downloads and builds it (often 100 MB or more). The demo steps are working code: they write exactly the files a real city does.
 
 `npm run build && npm start` serves the production build.

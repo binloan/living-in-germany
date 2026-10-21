@@ -19,7 +19,6 @@ app.yaml
 DESIGN.md
 PRODUCT.md
 CLAUDE.md
-AGENTS.md
 
 # ratings providers you wrote for yourself (ratings/template.mjs shows the contract)
 scripts/data/ratings/local/
