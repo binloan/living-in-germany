@@ -59,5 +59,5 @@ export function parseLatLon(q, city) {
   return Number.isFinite(lat) && Number.isFinite(lon) && inBox(city, lat, lon) ? { lat, lon } : null;
 }
 
-/** The city's places as one phrase, "Berlin and Potsdam". */
+/** The city's places as one phrase, "Exampleton and Sampleburg". */
 export const regionOf = (city) => new Intl.ListFormat('en', { type: 'conjunction' }).format(city.municipalities);

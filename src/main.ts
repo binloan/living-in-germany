@@ -17,7 +17,7 @@ import { buildLayers } from './ui/layers';
 import { buildFocus } from './ui/focus';
 import { createSplash } from './ui/splash';
 import type { Ctx } from './ui/ctx';
-import { haversine, h, raf, storageGet, storageSet, uid } from './util';
+import { STORAGE, haversine, h, migrateLegacyStorage, raf, storageGet, storageSet, uid } from './util';
 import { latLngToCell } from 'h3-js';
 import { MAX_BOOKMARKS, placeLabel } from './place';
 
@@ -27,7 +27,7 @@ const splash = createSplash();
 document.body.append(splash.el);
 
 /**
- * Which city to show. An address that names one (/berlin) or a city this browser chose before goes straight to loading; with
+ * Which city to show. An address that names one (/exampleton) or a city this browser chose before goes straight to loading; with
  * several cities and neither, the visitor is asked. `?choose` always asks (a preview, also while there is only one city).
  */
 async function pickCity(cities: CitySummary[]): Promise<string | null> {
@@ -55,6 +55,7 @@ async function pickCity(cities: CitySummary[]): Promise<string | null> {
 class NoCityError extends Error {}
 
 async function main() {
+  migrateLegacyStorage();
   const listed = await listCities().then((c) => c, () => null);
   if (listed && !listed.length) throw new NoCityError();
   const cities = listed ?? [];
@@ -122,13 +123,13 @@ async function main() {
   document.body.classList.toggle('panel-collapsed', store.p.panelCollapsed);
 
   // first visit: one line on what the map does, gone after the first spot or 12 s
-  if (!storageGet('berlin-fit.hint', false)) {
+  if (!storageGet(`${STORAGE}.hint`, false)) {
     const touch = window.matchMedia('(hover: none)').matches;
     // a new visitor has no priorities yet: the map is uncoloured until they choose some
     const fresh = !engine.activeMetrics().length;
     const hint = h('div.hint', { role: 'status' }, fresh ? (touch ? 'Open Matches and choose what matters to you' : 'Choose what matters to you in the panel') : touch ? 'Tap the map to see how a spot scores' : 'Click the map to see how a spot scores');
     chrome.append(hint);
-    const done = () => { hint.remove(); storageSet('berlin-fit.hint', true); };
+    const done = () => { hint.remove(); storageSet(`${STORAGE}.hint`, true); };
     setTimeout(done, 12000);
     store.subscribe((c) => { if ((c.has('selection') && store.t.selection) || (fresh && c.has('enabled'))) done(); });
   }

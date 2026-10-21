@@ -39,7 +39,7 @@ function loadGrid(city) {
 }
 const bucket = (la, lo) => `${Math.floor(la / 0.01)}:${Math.floor(lo / 0.015)}`;
 
-/** Local wall-clock hh:mm of the next Mon-Fri (skipping today) as ISO UTC, Europe/Berlin. */
+/** Local wall-clock hh:mm of the next Mon-Fri (skipping today) as ISO UTC, in German time (the tool is for Germany). */
 export function nextWeekdayIso(hour = 8, minute = 30, from = new Date()) {
   const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', hour12: false, weekday: 'short' });
   for (let d = 1; d < 8; d++) {

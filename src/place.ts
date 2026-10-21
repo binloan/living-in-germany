@@ -6,15 +6,15 @@ import { haversine } from './util';
 const STATION_NEAR_M = 550;
 
 export interface PlaceLabel {
-  /** subdistrict: "Moabit West", Potsdam's Stadtteil. The bold name of a spot. */
+  /** subdistrict: "Old Mill A", a neighbourhood. The bold name of a spot. */
   name: string;
-  /** Berlin district ("Mitte") or Potsdam group ("Potsdam Babelsberg") */
+  /** the district above it ("Old Mill") */
   district: string;
   /** "Moabit West · Mitte": what to show as the main title */
   title: string;
   /** the planning-area name (street-like, "Elberfelder Straße"), with the station nearby if there is one */
   detail: string;
-  /** index into ds.cells, null outside Berlin and Potsdam */
+  /** index into ds.cells, null outside the city */
   cell: number | null;
 }
 
@@ -43,7 +43,7 @@ export function placeLabel(ds: Dataset, lat: number, lon: number): PlaceLabel {
     const where = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
     return { name: station?.name ?? where, district: '', title: station?.name ?? where, detail: '', cell };
   }
-  // where a city has a larger area above its planning areas (Berlin's Bezirksregion) that is the name and the planning area the detail
+  // where a city has a larger area above its planning areas (a Bezirksregion, say) that is the name and the planning area the detail
   const name = area.bzrName ?? area.name;
   const district = area.district;
   const detail = [area.name !== name ? area.name : '', near].filter(Boolean).join(' · ');

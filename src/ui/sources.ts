@@ -26,7 +26,7 @@ export function buildSources(ctx: Ctx) {
   });
   const exportBtn = h('button.btn', { type: 'button', onclick: () => {
     const blob = new Blob([store.exportJson()], { type: 'application/json' });
-    const a = h('a', { href: URL.createObjectURL(blob), download: 'berlin-fit.json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: 'living-in-germany.json' });
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   } }, icon('download'), 'Export');

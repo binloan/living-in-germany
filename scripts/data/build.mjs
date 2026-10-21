@@ -38,7 +38,7 @@ const cityMetrics = path.join(CITY_DIR, 'metrics.json');
 const defs = resolveMetricDefs(readJson(path.join(ROOT, 'data', 'metrics.json')), fs.existsSync(cityMetrics) ? readJson(cityMetrics) : {}, CITY.texts ?? {}, CITY_ID);
 const N = cells.ids.length;
 const idx = new Map(cells.ids.map((h, i) => [h, i]));
-// the place (Berlin, Potsdam ...) each hex belongs to
+// the place (one of the manifest's municipalities) each hex belongs to
 const baseAreas = loadAreas().features;
 const place = cells.area.map((a) => baseAreas[a].properties.city);
 
@@ -134,7 +134,7 @@ const districts = [...byDistrict].map(([name, pts]) => ({
 }));
 writeJson(path.join(GEN, 'districts.json'), districts);
 
-// District borders (Bezirke, Potsdam as one outline): union the full-precision areas of each district, then
+// District borders (a place may be one district): union the full-precision areas of each district, then
 // extract every shared edge ONCE with a topology mesh. Simplifying each district on its own would leave
 // neighbouring borders slightly apart and draw doubled, disconnected lines.
 const fullAreas = readJson(path.join(CACHE, 'areas.geo.json'));
@@ -150,7 +150,7 @@ writeJson(path.join(GEN, 'district-outlines.json'), { type: 'FeatureCollection',
 const whole = turf.union(turf.featureCollection(unions.map((u) => turf.feature(u.geometry))));
 const outline = turf.truncate(turf.simplify(whole, { tolerance: 0.0003, highQuality: false }), { precision: 5 });
 writeJson(path.join(GEN, 'outline.json'), outline);
-// the silhouette for the start and loading screens; the places other than the first (Potsdam next to Berlin) get a label
+// the silhouette for the start and loading screens; the places other than the first (a smaller town next to the main city) get a label
 writeJson(path.join(GEN, 'shape.json'), buildShape(outline, CITY.municipalities.slice(1).map((name) => ({ name, points: cells.ids.flatMap((_, i) => (place[i] === name ? [[cells.lon[i], cells.lat[i]]] : [])) }))));
 const topo = topology({ d: { type: 'FeatureCollection', features: unions } });
 const mesh = topojsonMesh(topo, topo.objects.d);

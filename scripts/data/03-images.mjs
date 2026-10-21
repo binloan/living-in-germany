@@ -1,4 +1,4 @@
-// Picks up to three representative photos per price zone (Berlin Ortsteil, Potsdam Stadtteil ...) from Wikimedia Commons.
+// Picks up to three representative photos per price zone (a district, a neighbourhood ...) from Wikimedia Commons.
 // Candidates: the images of the zone's German Wikipedia article, then Commons files geotagged near the zone centre.
 // Only freely licensed landscape JPEGs of a useful size are kept; the author and licence travel with each photo.
 // Output: cities/<id>/generated/images.json  { [zoneId]: [{ u, w, h, page, by, lic, licUrl }] }

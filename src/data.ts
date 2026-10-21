@@ -48,7 +48,7 @@ async function loadConfig(cityId: string | null): Promise<PublicConfig> {
   return (await getJson<PublicConfig>('/api/config'))!;
 }
 
-/** Loads one city: `cityId` is the id from the address (`/berlin`), null for the default city. */
+/** Loads one city: `cityId` is the id from the address (`/exampleton`), null for the default city. */
 export async function loadDataset(cityId: string | null, onProgress?: (done: number, total: number, what: string) => void): Promise<Dataset> {
   let done = 0;
   const total = 14;

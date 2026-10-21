@@ -217,7 +217,7 @@ export class MapView {
     if (Math.abs(d) >= 1) map.panBy([0, d], { duration: 300, essential: true });
   }
 
-  /** West, south, east, north of everything that is scored (the fixed box cut Potsdam's western edge off on a phone). */
+  /** West, south, east, north of everything that is scored (a fixed box once cut the edge of a smaller place off on a phone). */
   private cityBox(): [number, number, number, number] {
     if (this.box) return this.box;
     let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
@@ -467,7 +467,7 @@ export class MapView {
 
   private closeSpotPopups() { this.popup.remove(); this.popupKey = ''; this.spotPopup.remove(); }
 
-  /** Zone a spot belongs to (a price counts for all of it), null outside Berlin and Potsdam. */
+  /** Zone a spot belongs to (a price counts for all of it), null outside the city. */
   private districtAt(lat: number, lon: number) {
     return this.engine.zoneAt(lat, lon)?.name ?? null;
   }

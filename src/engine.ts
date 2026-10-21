@@ -21,10 +21,10 @@ export interface PriceCluster {
   value: number;
   reports: PricePoint[];
 }
-/** A price zone: a Berlin Ortsteil or a Potsdam Stadtteil. */
+/** A price zone: the area one average rent counts for (a district, a neighbourhood). */
 export interface ZoneInfo {
   name: string;
-  /** Berlin Bezirk, or the Potsdam district */
+  /** the district the zone belongs to */
   parent: string;
   lat: number;
   lon: number;
@@ -93,7 +93,7 @@ export class Engine {
     return this.ds.metrics.filter((m) => !m.missing && !m.overlay && store.isOn(m.id) && (store.p.weights[m.id] ?? 0) > 0 && (!m.dynamic || this.ready(m.id)));
   }
   hasCommute() { return store.p.commute.some((p) => this.times.has(p.id)); }
-  /** The price zone a point lies in, null outside Berlin and Potsdam. */
+  /** The price zone a point lies in, null outside the city. */
   zoneAt(lat: number, lon: number): ZoneInfo | null {
     const i = this.ds.cellIndex.get(latLngToCell(lat, lon, this.ds.cells.res));
     return i == null ? null : this.zones[this.zoneIdx[i]];
@@ -169,7 +169,7 @@ export class Engine {
   /**
    * Best spots for the current priorities: the highest-scoring hexes, one per neighbourhood (at least TOP_SEPARATION_M apart).
    * Ranked by the hex score, the number the map and the spot card show, so what looks best on the map leads the list in
-   * Potsdam's big Stadtteile as well as Berlin's small planning areas (a mean over an area would sink the big ones).
+   * big neighbourhoods as well as small planning areas (a mean over an area would sink the big ones).
    * Ties (many hexes sit at 100) go to the better surrounding.
    */
   topAreas(count = 5): AreaRank[] {

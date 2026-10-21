@@ -83,7 +83,7 @@ server.once('error', (err) => {
   process.exit(1);
 });
 server.once('listening', () => {
-  console.log(`berlin-transport ${dev ? 'dev' : 'prod'} on http://localhost:${config.port}`);
+  console.log(`living-in-germany ${dev ? 'dev' : 'prod'} on http://localhost:${config.port}`);
   if (demo) console.warn('Showing the demo city (invented places and numbers). Your own cities go in cities/: see ADDING_A_CITY.md.');
   if (!config.contactEmail) console.warn('CONTACT_EMAIL not set: external services may reject requests (see .env.example)');
   for (const line of describeRouting(cities.values())) console.log(line);

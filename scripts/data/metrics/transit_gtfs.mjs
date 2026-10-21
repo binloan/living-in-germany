@@ -172,13 +172,14 @@ if (process.env.TRANSIT_DEBUG) {
 }
 
 // ---------- stations
+// a feed names its stops its own way ("Mill Road (Exampleton)", "Exampleton, Mill Road"): pipeline.gtfs.stopNameRemove in the manifest lists
+// regular expressions (case-insensitive) whose matches are cut out, in order. The German "Bhf"/"Bf" suffix goes after them, for every city.
+const REMOVE = (GTFS.stopNameRemove ?? []).map((p) => new RegExp(p, 'i'));
 const cleanName = (raw) => {
   let n = raw.trim();
   n = n.replace(/^(S\+U|S|U)\s+/, '');
-  n = n.replace(/\s*\((Berlin|Potsdam)\)\s*$/i, '');
-  n = n.replace(/,\s*Berlin$/i, '');
-  n = n.replace(/^(Berlin|Potsdam),\s*/i, '');
-  n = n.replace(/\s+(Bhf|Bf)(?=\/|$)/, '').replace(/\s*\(Berlin\)/i, '');
+  for (const re of REMOVE) n = n.replace(re, '');
+  n = n.replace(/\s+(Bhf|Bf)(?=\/|$)/, '');
   return n.trim();
 };
 const keyName = (n) => n.split('/')[0].trim().toLowerCase();

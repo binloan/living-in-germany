@@ -31,8 +31,8 @@ export const METRICS_DIR = inCity('cache', 'metrics');
 export const H3_RES = 9;
 if (!noCityOk) for (const d of [RAW, CACHE, GEN, METRICS_DIR]) fs.mkdirSync(d, { recursive: true });
 
-export const USER_AGENT = `berlin-transport-data/0.1 (${process.env.CONTACT_EMAIL || 'no-contact-set'})`;
-// Berlin Polizei blocks non-browser agents.
+export const USER_AGENT = `living-in-germany-data/0.1 (${process.env.CONTACT_EMAIL || 'no-contact-set'})`;
+// Some publishers block agents that are not browsers (a city's steps use this one where theirs does).
 export const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -103,7 +103,7 @@ export function loadCells() {
   return readJson(path.join(CACHE, 'cells.base.json'));
 }
 /** Full-precision area polygons produced by 01-areas.mjs (GeoJSON FeatureCollection, WGS84).
- *  Feature.properties: { id, name, district, city: 'Berlin'|'Potsdam', bzrId?, bzrName?, kind } */
+ *  Feature.properties: { id, name, district, city: one of the manifest's municipalities, kind, and what the city's own step adds } */
 export function loadAreas() {
   return readJson(path.join(CACHE, 'areas.geo.json'));
 }

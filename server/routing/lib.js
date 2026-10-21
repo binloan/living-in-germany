@@ -53,7 +53,7 @@ export function assembleRoute(legs, departMs, arriveMs, from, to) {
 }
 
 /** Local wall-clock { date: "YYYY-MM-DD", time: "HH:MM" } of an instant in a time zone. */
-export function wallClock(iso, timeZone = 'Europe/Berlin') {
+export function wallClock(iso, timeZone = 'Europe/Berlin' /* German time */) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour === '24' ? '00' : p.hour}:${p.minute}` };
 }

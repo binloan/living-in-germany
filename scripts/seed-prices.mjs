@@ -1,6 +1,6 @@
 // Puts the average rents of the city's seed/rents.json (EUR per m²) on the shared price list, one report per price zone
-// (Berlin Ortsteil, Potsdam Stadtteil) at a point inside it. Safe to run twice: a zone that already has that price is skipped.
-// Zone keys: whatever the city's zone module (seedKey in cities/<id>/steps/zones.mjs) says: "Bezirk/Ortsteil" for Berlin, the Stadtteil id (P11 ...) for Potsdam.
+// (a district, a neighbourhood) at a point inside it. Safe to run twice: a zone that already has that price is skipped.
+// Zone keys: whatever the city's zone module (seedKey in cities/<id>/steps/zones.mjs) says: "district/name" or an area id.
 // Usage: node scripts/seed-prices.mjs [--city <id>] [--url https://your-app.appspot.com | --live] [--file cities/<id>/seed/rents.json] [--delay ms]
 //   --live  the deployed app of GCP_PROJECT_ID (https://<project>.appspot.com)
 //   --runtime  copies the prices of your local server (cities/<id>/runtime/prices.json, a list of { lat, lon, value }) to the live one, e.g. with --live

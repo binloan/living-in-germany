@@ -147,8 +147,12 @@ export function createSplash() {
     }, FLASH_EVERY_MS);
   }
 
+  /** The page title follows the city the page is about. */
+  const setTitle = (city: CitySummary) => { document.title = `Living in ${city.name}`; };
+
   function showLoading(city: CitySummary) {
     loading = true;
+    setTitle(city);
     el.classList.remove('is-choosing');
     el.classList.add('is-loading');
     window.clearInterval(flashTimer);
@@ -218,12 +222,13 @@ export function createSplash() {
       select.value = selectedId;
       const current = () => cities.find((c) => c.id === select.value) ?? cities[0];
       cityName.textContent = current().name;
+      setTitle(current());
       draw(current());
       choose.hidden = false;
       el.classList.add('is-choosing');
       startFlashing();
       go.focus({ preventScroll: true });
-      select.addEventListener('change', () => { cityName.textContent = current().name; draw(current()); });
+      select.addEventListener('change', () => { cityName.textContent = current().name; setTitle(current()); draw(current()); });
       return new Promise((resolve) => {
         go.addEventListener('click', () => {
           select.disabled = true;

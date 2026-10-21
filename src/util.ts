@@ -79,6 +79,28 @@ export function inkOn(hex: string) {
   return lum > 0.6 ? '#101a24' : '#ffffff';
 }
 
+/** The start of every key the app keeps in the browser. */
+export const STORAGE = 'living-in-germany';
+
+/**
+ * The keys were called `berlin-fit.*` before the app got its name: copy them to the new names once, so saved weights, spots and notes
+ * survive. Run before anything reads the storage. An old key is only taken over where the new one does not exist yet.
+ */
+export function migrateLegacyStorage(): void {
+  try {
+    const old = 'berlin-fit.';
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i) ?? '');
+    for (const key of keys) {
+      if (!key.startsWith(old)) continue;
+      const next = `${STORAGE}.${key.slice(old.length)}`;
+      const value = localStorage.getItem(key);
+      if (value != null && localStorage.getItem(next) == null) localStorage.setItem(next, value);
+      localStorage.removeItem(key);
+    }
+  } catch { /* private mode */ }
+}
+
 export function storageGet<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);

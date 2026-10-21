@@ -12,7 +12,7 @@ export const config = {
   // Transitous otherwise; "transitous" never asks the local one. Commute times for the whole map always come from Transitous.
   routeSource: env.ROUTE_SOURCE === 'transitous' ? 'transitous' : 'auto',
   routeCooldownMin: Number(env.ROUTE_COOLDOWN_MIN) || 10, // how long a local service is left alone after a failure
-  // VBB (Berlin): the address of its HAFAS ReST server and the access key, both sent by VBB after a request to api@vbb.de
+  // VBB (the Berlin-Brandenburg timetable service): the address of its HAFAS ReST server and the access key, both sent by VBB after a request to api@vbb.de
   vbbApiUrl: trim(env.VBB_API_URL || ''),
   vbbAccessId: env.VBB_ACCESS_ID || '',
   photonUrl: trim(env.PHOTON_URL || 'https://photon.komoot.io'),
@@ -25,7 +25,7 @@ export const config = {
   priceDatabase: env.PRICE_DATABASE || '', // empty: the database named in the city's manifest (prices.database), else "prices"
   priceWritesPerMin: Number(env.PRICE_WRITES_PER_MIN) || 20,
   gcpProject: env.GOOGLE_CLOUD_PROJECT || env.GCP_PROJECT_ID || '',
-  userAgent: `berlin-transport/0.1 (${env.CONTACT_EMAIL || 'no-contact-set'})`,
+  userAgent: `living-in-germany/0.1 (${env.CONTACT_EMAIL || 'no-contact-set'})`,
   // What the browser may know, apart from the city it looks at (server/cities.js). Never put secrets here.
   public: {
     basemapStyleUrl: env.BASEMAP_STYLE_URL || 'https://tiles.openfreemap.org/styles/positron',

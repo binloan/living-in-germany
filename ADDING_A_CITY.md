@@ -1,6 +1,6 @@
 # Adding a city
 
-A city is a folder of data plus a few small scripts that know where that city's data comes from. The server, the browser app and the shared pipeline code need no changes for it. The repository holds no real city: the cities live in a `cities/` folder of their own (a repository of its own, private if you like, cloned there; no submodule), and `cities.example/` is the template: a demo city, Exampleton, whose places, lines and numbers are invented by its steps (`npm run dev` shows it). Start with `cp -r cities.example cities`, then replace the invented steps with ones that read real data. Once `cities/cities.json` lists a city, the demo steps aside. The text below was written while building the first city, Berlin with Potsdam, which stays outside this repository; it uses Berlin as the example of a city with two places. A second city will probably show gaps, and section 6 lists the ones already known.
+A city is a folder of data plus a few small scripts that know where that city's data comes from. The server, the browser app and the shared pipeline code need no changes for it. The repository holds no real city: the cities live in a `cities/` folder of their own (a repository of its own, private if you like, cloned there; no submodule), and `cities.example/` is the template: a demo city, Exampleton, whose places, lines and numbers are invented by its steps (`npm run dev` shows it). Start with `cp -r cities.example cities`, then replace the invented steps with ones that read real data. Once `cities/cities.json` lists a city, the demo steps aside. The text below was written while building the first city, which stays outside this repository; Exampleton and Sampleburg stand in for its two places. A second city will probably show gaps, and section 6 lists the ones already known.
 
 Read the "Cities" section of the [README](README.md) first for how the pieces fit together.
 
@@ -40,14 +40,14 @@ Before writing anything, go through the metrics in `data/metrics.json` and write
 | `restaurants` | `metrics/env_restaurants.mjs`, after `05-ratings.mjs` (needs a ratings provider of your choice, see `scripts/data/ratings/template.mjs`) | |
 | `safety` | | Police statistics of that city |
 | `calm` | | The noise map of that state |
-| `building_age`, `density`, `pop_age` (overlay) | `metrics/zensus_building_age.mjs`, `zensus_density.mjs`, `zensus_pop_age.mjs`: the Zensus 2022 100 m grid, the same method for all of Germany (2022 census, coarser building classes, no filling of gaps) | Only if the city publishes something better. Berlin does (Umweltatlas, Einwohnerregister) and uses the grid for Potsdam only; its steps are in `cities/berlin/steps/` and read the grid through `scripts/data/zensus.mjs` |
+| `building_age`, `density`, `pop_age` (overlay) | `metrics/zensus_building_age.mjs`, `zensus_density.mjs`, `zensus_pop_age.mjs`: the Zensus 2022 100 m grid, the same method for all of Germany (2022 census, coarser building classes, no filling of gaps) | Only if the city publishes something better. A state may publish its own (an environment atlas, a residents' register); use the grid for Potsdam only; its steps are in `cities/berlin/steps/` and read the grid through `scripts/data/zensus.mjs` |
 | `wohnlage` | | Only if the city publishes a comparable residential-quality index |
 
 For each metric that has no good source, choose one of three, and write it in the manifest or the metric file as described in step 6:
 
 1. **Leave it out.** Do not add a step. The metric is not built and the app does not show it. This is the honest default.
-2. **Stand in for it.** A `proxy` in `cities/<id>/metrics.json` lets another metric's score fill the hexagons that have no value (Berlin does this for Potsdam). The info text must say so.
-3. **Fill the gaps.** Interpolation inside a step (Potsdam's age does this). Only if you are willing to explain it in the info text and the source description.
+2. **Stand in for it.** A `proxy` in `cities/<id>/metrics.json` lets another metric's score fill the hexagons that have no value (a smaller place next to the main city can take the main city's score). The info text must say so.
+3. **Fill the gaps.** Interpolation inside a step (a smaller place's age can be filled this way). Only if you are willing to explain it in the info text and the source description.
 
 Nothing in the app requires a particular metric. The overall score uses whatever the city has, and weights are renormalised.
 
@@ -59,7 +59,7 @@ Nothing in the app requires a particular metric. The overall score uses whatever
 |---|---|
 | `id` | Same as the folder name |
 | `name` | Shown in "Living in …" and in the start screen |
-| `municipalities` | The places the scores cover, main city first: `["Hamburg"]`, or `["Berlin", "Potsdam"]`. These must be the values of `properties.city` your areas step writes. The first is the main city; the others get a label on the start screen shape. Used for the coverage table, `only` and `proxy.city` |
+| `municipalities` | The places the scores cover, main city first: `["Hamburg"]`, or `["Exampleton", "Sampleburg"]`. These must be the values of `properties.city` your areas step writes. The first is the main city; the others get a label on the start screen shape. Used for the coverage table, `only` and `proxy.city` |
 | `bbox` | `{ w, s, e, n }` in degrees. The server refuses lookups and rent prices outside it, Photon search is limited to it, and the pipeline uses it for landmarks and the rail graph. Make it a little larger than the city |
 | `map.center`, `map.bounds`, `map.fallbackBox` | Start view, the box the map cannot be panned far beyond, and the box to fit when the outline is missing. `[lon, lat]` and `[w, s, e, n]` |
 | `search` | `{ lat, lon }` that address search is biased to |
@@ -68,7 +68,7 @@ Nothing in the app requires a particular metric. The overall score uses whatever
 | `modes` | The kinds of line the city has, in the order the app lists them, with the city's own name for each: `{ "S": "S-Bahn", "U": "U-Bahn", "T": "Tram", "R": "Regional" }`. The four letters are fixed (S suburban rail, U underground, T tram, R regional rail); the names are free (`"U": "Stadtbahn"`). Leave a kind out when the city has none: its line switch and legend entry disappear |
 | `texts` | The city's words for the shared descriptions: `timetable`, `modeList` (the kinds of line as a phrase, "S-Bahn, U-Bahn, tram and regional"), `centreWhere`, `centrePlace`, `centreExtra`, `zoneKinds`, `zoneNames`, `rentGaps`. Use `""` for `centreExtra` and `rentGaps` when there is nothing to say; a text that is missing stops the build |
 | `splash` | `{ quips, pokes }`: the city's own funny lines for the loading screen, added to the shared ones. May be empty lists |
-| `routing.provider` | Optional. The timetable service of the city's own region, asked for routes before Transitous: `"vbb"` for Berlin. Leave it out and Transitous plans every route. To add a provider, write `server/routing/<name>.js` (it exports `{ id, name, configured(), plan(from, to, city) }`, copy `vbb.js`) and register it in `server/routing/index.js`. A provider must leave out long-distance trains and answer with `null` when it finds no route. Server side only, the browser never sees it |
+| `routing.provider` | Optional. The timetable service of the city's own region, asked for routes before Transitous: `"vbb"` for the Berlin-Brandenburg region. Leave it out and Transitous plans every route. To add a provider, write `server/routing/<name>.js` (it exports `{ id, name, configured(), plan(from, to, city) }`, copy `vbb.js`) and register it in `server/routing/index.js`. A provider must leave out long-distance trains and answer with `null` when it finds no route. Server side only, the browser never sees it |
 | `pipeline.steps` | The scripts `npm run data -- --all` runs, in order, as paths relative to `scripts/data/` |
 | `pipeline.zones` | The zone module, `cities/<id>/zones.mjs` |
 | `pipeline.gtfs` | `{ url, dir, bbox, routeTypes }`: the timetable feed, the folder under `raw/` for it, the box inside which stops are kept (`{ w, s, e, n }`), and which `route_type` codes of the feed are which kind of line: `{ "S": [109], "U": [400], "T": [900], "R": [[100, 199]] }`. A code, or `[from, to]` for a range; the first kind that matches wins. Look at the `routes.txt` of the feed: standard GTFS uses 0 tram, 1 subway, 2 rail, the extended codes 100 to 199 rail, 400 to 405 urban rail, 900 to 906 tram. A kind without codes is simply not drawn |
@@ -85,11 +85,11 @@ Add `"<id>"` to `cities` in `cities/cities.json`. Do this when the data exists: 
 
 - `cache/areas.geo.json`: a GeoJSON FeatureCollection with the full-precision polygons. The properties of each feature:
   - `id` (unique, starts with a letter, for example `H0101`), `name` (the bold name of a spot), `kind` (`"Stadtteil"`, `"Planungsraum"` …),
-  - `district`: the next level up (Berlin's Bezirk). Districts get their own outlines and borders and are shown in the lists. Every area needs one,
+  - `district`: the next level up (a Bezirk, a borough). Districts get their own outlines and borders and are shown in the lists. Every area needs one,
   - `city`: the municipality, one of `municipalities` in the manifest,
   - optional `bzrId` / `bzrName`: a level between area and district. If set, `bzrName` becomes the bold name of a spot and the area name the small line under it.
 - `cache/cells.base.json`: `{ res: 9, ids, lat, lon, area }`, the H3 resolution 9 cells whose centre lies inside an area. `area[i]` is the index of the area of cell `i` in `areas.geo.json`.
-- `generated/areas.json`: the same areas, simplified (the Berlin step uses `turf.simplify` with tolerance 0.0002 and 5 decimals).
+- `generated/areas.json`: the same areas, simplified (a real step uses `turf.simplify` with tolerance 0.0002 and 5 decimals).
 
 ### Step 5. Write the zones module and the rent seed
 
@@ -102,7 +102,7 @@ export function assignZones({ areas, cells }) {    // areas = generated/areas.js
 }                                                  // cellZone[i]: index into zones, or -1
 ```
 
-A price zone is the area one average rent counts for: rents are published per Ortsteil in Berlin, so a zone is an Ortsteil, not a planning area. If a city publishes rents per Stadtteil, the zones can simply be the areas. Cells you return `-1` for get the zone most of their area has. The build adds each zone's representative point and hexagon count.
+A price zone is the area one average rent counts for: where rents are published per Ortsteil, a zone is an Ortsteil, not a planning area. If a city publishes rents per Stadtteil, the zones can simply be the areas. Cells you return `-1` for get the zone most of their area has. The build adds each zone's representative point and hexagon count.
 
 `seed/rents.json` is optional starting rents:
 
@@ -127,14 +127,14 @@ The build turns `raw` into a 0 to 100 score by `better` (higher or lower), `tran
 Then describe the metric for this city in `cities/<id>/metrics.json`, keyed by metric id. Any field of the shared definition can be overridden. The usual ones:
 
 ```json
-{ "safety": { "info": "How this city's numbers are made, in plain language.", "cityWide": "Potsdam" },
-  "calm":   { "info": "…", "note": "…", "only": "Berlin", "proxy": { "city": "Potsdam", "metric": "density" } } }
+{ "safety": { "info": "How this city's numbers are made, in plain language.", "cityWide": "Sampleburg" },
+  "calm":   { "info": "…", "note": "…", "only": "Exampleton", "proxy": { "city": "Sampleburg", "metric": "density" } } }
 ```
 
 - `info`: the text behind the (i) button; a metric without one shows its short `hint`.
 - `only`: the metric exists for this municipality only; other places get no value.
 - `proxy`: `{ city, metric }`, the stand-in described in step 1.
-- `cityWide`: names a place for which the step gives one value to the whole place (Potsdam's crime figure). The app only uses it to say so in the priority's note; the step itself has to produce that value.
+- `cityWide`: names a place for which the step gives one value to the whole place (Sampleburg's crime figure, say). The app only uses it to say so in the priority's note; the step itself has to produce that value.
 
 Shared texts in `data/metrics.json` contain `{placeholders}` that come from `texts` in the manifest. You do not edit that file.
 
@@ -186,13 +186,13 @@ cities/<id>/
 
 The browser asks `GET /api/cities` for the list and the silhouettes, then `GET /api/config?city=<id>` and `/data/<id>/…`. Nothing in `src/` or `server/` lists a city.
 
-## 4. Pitfalls we know from Berlin
+## 4. Pitfalls we know from the first city
 
 - Area ids must be unique across the whole city and the zone ids too; both end up in the browser.
 - `municipalities` must match the `city` values exactly, including case; a mismatch shows as 0 % coverage.
 - The pipeline builds the hexagon grid at H3 resolution 9 (`H3_RES` in `scripts/data/lib.mjs`, about 350 m across). The metric radii and the "about 350 m" in the Info dialog assume it; the browser and server read the resolution from the data.
 - A step that rewrites `sources/*.json` would put its first draft over your edits; use `writeSources`.
-- Running the whole pipeline reproduces the results exactly (the Berlin outputs were checked that way). After changing a shared script, rerun `--all` for your cities and compare the hashes in their golden tests.
+- Running the whole pipeline reproduces the results exactly (the first city's outputs were checked that way). After changing a shared script, rerun `--all` for your cities and compare the hashes in their golden tests.
 
 ## 5. Checklist
 

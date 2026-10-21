@@ -8,11 +8,11 @@ import { EXAMPLE_DIR, ROOT, cityDirs, sampleCity } from './helpers/paths.mjs';
 
 const read = (...p) => JSON.parse(fs.readFileSync(path.join(...p), 'utf8'));
 const shared = read(ROOT, 'data', 'metrics.json');
-const berlin = sampleCity; // any city will do: the texts are the city's, the rest is shared
+const city = sampleCity; // any city will do: the texts are the city's, the rest is shared
 const overrides = read(EXAMPLE_DIR, 'metrics.json');
 
 test('no placeholder is left in the finished texts', () => {
-  for (const d of resolveMetricDefs(shared, overrides, berlin.texts, 'example')) {
+  for (const d of resolveMetricDefs(shared, overrides, city.texts, 'example')) {
     for (const k of ['label', 'hint', 'info', 'note']) assert.ok(!/[{}]/.test(d[k] ?? ''), `${d.id}.${k}`);
   }
 });
@@ -23,11 +23,11 @@ test('a city text that is missing is an error, not "{name}" in the app', () => {
 });
 
 test('a city can only describe metrics that exist', () => {
-  assert.throws(() => resolveMetricDefs(shared, { safty: { info: 'x' } }, berlin.texts, 'example'), /"safty", which is not a metric/);
+  assert.throws(() => resolveMetricDefs(shared, { safty: { info: 'x' } }, city.texts, 'example'), /"safty", which is not a metric/);
 });
 
 test('a metric the city does not describe keeps the shared definition, and falls back to its hint in the app', () => {
-  const defs = resolveMetricDefs(shared, {}, berlin.texts, 'example');
+  const defs = resolveMetricDefs(shared, {}, city.texts, 'example');
   const safety = defs.find((d) => d.id === 'safety');
   assert.equal(safety.info, undefined);
   assert.ok(safety.hint);
@@ -38,7 +38,7 @@ test('every metric that is scored has one fixed scale, the same ruler for every 
   for (const d of shared.filter((m) => !m.dynamic)) {
     assert.ok(Array.isArray(d.scale) && d.scale.length === 2 && d.scale[0] !== d.scale[1], `${d.id} needs a scale in data/metrics.json`);
   }
-  assert.throws(() => resolveMetricDefs(shared, { safety: { scale: [0, 1] } }, berlin.texts, 'example'), /may not set the scale of "safety"/);
+  assert.throws(() => resolveMetricDefs(shared, { safety: { scale: [0, 1] } }, city.texts, 'example'), /may not set the scale of "safety"/);
 });
 
 test('every city (the sample one and yours) has the texts the shared descriptions ask for', () => {

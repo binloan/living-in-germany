@@ -1,4 +1,5 @@
 import type { CityInfo, Mode } from './types';
+import { STORAGE } from './util';
 
 /**
  * The city the app shows. It is set once, right after the data has loaded and before anything is drawn; everything that names
@@ -13,11 +14,11 @@ export function city(): CityInfo {
 }
 
 const list = (type: 'conjunction' | 'disjunction') => new Intl.ListFormat('en', { type }).format(city().municipalities);
-/** The places the scores cover, as one phrase: "Berlin and Potsdam". */
+/** The places the scores cover, as one phrase: "Exampleton and Sampleburg". */
 export const region = () => list('conjunction');
-/** "Berlin or Potsdam" */
+/** "Exampleton or Sampleburg" */
 export const regionOr = () => list('disjunction');
-/** "Berlin / Potsdam" */
+/** "Exampleton / Sampleburg" */
 export const regionSlash = () => city().municipalities.join(' / ');
 
 const GENERIC_MODE: Record<string, string> = { S: 'Suburban rail', U: 'Metro', T: 'Tram', R: 'Regional rail' };
@@ -32,7 +33,7 @@ export function cityFromPath(pathname = location.pathname): string | null {
   return id || null;
 }
 
-const REMEMBERED = 'berlin-fit.city';
+const REMEMBERED = `${STORAGE}.city`;
 /** The city this browser chose last, null when none. */
 export function rememberedCity(): string | null {
   try { return localStorage.getItem(REMEMBERED); } catch { return null; }

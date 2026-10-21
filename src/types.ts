@@ -157,7 +157,7 @@ export interface CommutePreset {
 export interface CityInfo {
   id: string;
   name: string;
-  /** the places the scores cover, "Berlin" and "Potsdam" */
+  /** the places the scores cover, "Exampleton" and "Sampleburg" */
   municipalities: string[];
   bbox: { w: number; s: number; e: number; n: number };
   map: { center: [number, number]; bounds: [number, number, number, number]; fallbackBox: [number, number, number, number] };

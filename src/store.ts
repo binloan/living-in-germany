@@ -1,6 +1,6 @@
 import type { AreaNote, Bookmark, CommutePoint, Mode, PricePoint } from './types';
 import { setScheme } from './ramp';
-import { storageGet, storageSet } from './util';
+import { STORAGE, storageGet, storageSet } from './util';
 
 export interface Persisted {
   weights: Record<string, number>;
@@ -53,7 +53,7 @@ export interface Transient {
 type Key = keyof Persisted | keyof Transient;
 type Listener = (changed: Set<Key>) => void;
 
-const KEY = 'berlin-fit.v1';
+const KEY = `${STORAGE}.v1`;
 
 /**
  * What belongs to one city and is stored per city: commute places, saved spots and area notes. Everything else (priorities and
