@@ -53,10 +53,20 @@ export function cityOf(req, res, next) {
 /** Whether a position lies inside the city's bounding box (never for a missing or non-numeric one). */
 export const inBox = (city, lat, lon) => lon >= city.bbox.w && lon <= city.bbox.e && lat >= city.bbox.s && lat <= city.bbox.n;
 
-/** A position as { lat, lon } when it lies inside the city's bounding box, else null. */
+const PRESET_REACH_M = 300;
+
+/** Whether a position is at one of the city's commute presets, which may lie outside the box (an airport beyond the city limits). */
+export function atPreset(city, lat, lon) {
+  return (city.commutePresets ?? []).some((p) => {
+    const dy = (lat - p.lat) * 111_320, dx = (lon - p.lon) * 111_320 * Math.cos((p.lat * Math.PI) / 180);
+    return Math.hypot(dx, dy) <= PRESET_REACH_M;
+  });
+}
+
+/** A position as { lat, lon } when it lies inside the city's bounding box or at one of its commute presets, else null. */
 export function parseLatLon(q, city) {
   const lat = Number(q.lat), lon = Number(q.lon);
-  return Number.isFinite(lat) && Number.isFinite(lon) && inBox(city, lat, lon) ? { lat, lon } : null;
+  return Number.isFinite(lat) && Number.isFinite(lon) && (inBox(city, lat, lon) || atPreset(city, lat, lon)) ? { lat, lon } : null;
 }
 
 /** The city's places as one phrase, "Exampleton and Sampleburg". */

@@ -58,6 +58,11 @@ test('the server: positions inside the box, what the browser may know', () => {
   assert.equal(inBox(sampleCity, NaN, 10), false);
   assert.deepEqual(parseLatLon({ lat: '50', lon: '10' }, sampleCity), { lat: 50, lon: 10 });
   assert.equal(parseLatLon({ lat: 'x', lon: '10' }, sampleCity), null);
+  // a commute preset may lie outside the box (a station beyond the city limits); nothing else out there is accepted
+  const withFar = { ...sampleCity, commutePresets: [...sampleCity.commutePresets, { name: 'Far station', lat: 51.5, lon: 12 }] };
+  assert.deepEqual(parseLatLon({ lat: '51.5', lon: '12.001' }, withFar), { lat: 51.5, lon: 12.001 });
+  assert.equal(parseLatLon({ lat: '51.5', lon: '12.01' }, withFar), null);
+  assert.equal(parseLatLon({ lat: '51.5', lon: '12' }, sampleCity), null);
   assert.equal('prices' in publicCity(sampleCity), false);
   assert.equal(JSON.stringify(config.public).includes('example'), false, 'the public settings name no city');
 });
