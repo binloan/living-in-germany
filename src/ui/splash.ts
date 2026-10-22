@@ -2,6 +2,7 @@ import { SCHEMES, rampRgb } from '../ramp';
 import { HEX_R, SHARED_POKES, SHARED_QUIPS, layoutOf, linesOf, type Layout } from '../shape';
 import type { CitySummary } from '../types';
 import { h } from '../util';
+import { createCityMenu, type CityMenu } from './citymenu';
 
 /**
  * The opening screen, in two phases that share one stage of hexagons in the shape of the city:
@@ -92,11 +93,8 @@ export function createSplash() {
 
   // ---- the question
   const ask = h('span#sp-ask.sp-ask-text', null, 'I’m looking to live in');
-  const cityName = h('span.sp-city', null, '');
-  const select = h('select.sp-select', { 'aria-labelledby': 'sp-ask' }) as HTMLSelectElement;
-  const chevron = svgEl('svg', { class: 'sp-chev', viewBox: '0 0 12 8', 'aria-hidden': 'true' });
-  chevron.innerHTML = '<path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
-  const pick = h('span.sp-pick', null, cityName, chevron, select);
+  const pick = h('span.sp-pick');
+  let menu: CityMenu | null = null;
   const go = h('button.sp-go', { type: 'button' }, 'Let’s go') as HTMLButtonElement;
   const choose = h('div.sp-choose', { hidden: true }, h('p.sp-ask', null, ask, ' ', pick), go);
 
@@ -218,20 +216,21 @@ export function createSplash() {
     el,
     /** The question, with the stage showing the selected city. Resolves with the id of the city when "Let's go" is pressed. */
     choose(cities: CitySummary[], selectedId: string): Promise<string> {
-      select.replaceChildren(...cities.map((c) => h('option', { value: c.id }, c.name)));
-      select.value = selectedId;
-      const current = () => cities.find((c) => c.id === select.value) ?? cities[0];
-      cityName.textContent = current().name;
+      const current = () => cities.find((c) => c.id === menu?.value()) ?? cities[0];
+      menu = createCityMenu({
+        options: cities, selected: selectedId, variant: 'splash', labelledBy: 'sp-ask',
+        onChange: () => { setTitle(current()); draw(current()); },
+      });
+      pick.replaceChildren(menu.el);
       setTitle(current());
       draw(current());
       choose.hidden = false;
       el.classList.add('is-choosing');
       startFlashing();
       go.focus({ preventScroll: true });
-      select.addEventListener('change', () => { cityName.textContent = current().name; setTitle(current()); draw(current()); });
       return new Promise((resolve) => {
         go.addEventListener('click', () => {
-          select.disabled = true;
+          menu?.disable(true);
           go.disabled = true;
           choose.classList.add('going');
           window.setTimeout(() => { choose.hidden = true; }, reduced ? 0 : 260);

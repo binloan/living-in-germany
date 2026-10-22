@@ -1,4 +1,5 @@
 import { cellToLatLng } from 'h3-js';
+import { rememberCity } from '../city';
 import { coverageNote } from '../coverage';
 import { icon, type IconName } from '../icons';
 import { normalizeShares, setShare, store, type PaneId } from '../store';
@@ -6,6 +7,7 @@ import { reverse } from '../api';
 import { placeLabel } from '../place';
 import { clear, debounce, fmtInt, fmtSqm, h, raf } from '../util';
 import { buildCompare } from './compare';
+import { createCityMenu } from './citymenu';
 import { createSearch } from './search';
 import { sheetHandle } from './sheet';
 import type { Ctx } from './ctx';
@@ -42,8 +44,16 @@ export function buildPanel(ctx: Ctx) {
   const sourcesBtn = h('button.icon-btn.sources-btn', { type: 'button', 'aria-label': 'Info, sources and your data', title: 'Info, sources and your data', onclick: () => store.setT({ sourcesOpen: true }) }, icon('info'));
   const collapseBtn = h('button.icon-btn.panel-collapse', { type: 'button', 'aria-label': 'Hide panel for a full-screen map', title: 'Hide panel', onclick: () => store.setP({ panelCollapsed: true }) }, icon('panel'));
   const openBtn = h('button.panel-open', { type: 'button', 'aria-label': 'Show panel', onclick: () => store.setP({ panelCollapsed: false }) }, icon('panel'), h('span', null, 'Panel'));
+  // with more than one city the name is a menu; picking another one loads that city's page, which shows its loading screen
+  const cities = ctx.ds.config.cities;
+  const heading = cities.length > 1
+    ? h('h1', null, h('span#brand-lead', null, 'Living in '), createCityMenu({
+      options: cities, selected: ctx.ds.city.id, variant: 'panel', labelledBy: 'brand-lead',
+      onChange: (id) => { rememberCity(id); location.assign(`/${id}`); },
+    }).el)
+    : h('h1', null, `Living in ${ctx.ds.city.name}`);
   const head = h('header.panel-head', null,
-    h('div.brand', null, h('h1', null, `Living in ${ctx.ds.city.name}`)),
+    h('div.brand', null, heading),
     h('div.head-actions', null, sourcesBtn, collapseBtn));
 
   const tabs = h('nav.tabs', { role: 'tablist', 'aria-label': 'Panels' });
