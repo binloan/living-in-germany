@@ -117,6 +117,10 @@ for (const s of readCsv('stops.txt')) {
 const depCount = new Map();  // stop_id -> Map(group idx -> departures in window on the active day)
 const stopGroups = new Map(); // stop_id -> Set(group idx) (all days)
 const W0 = 7 * 3600, W1 = 19 * 3600;
+// A feed without shapes.txt (the nationwide gtfs.de feed) gets one straight-line shape per distinct stop sequence of the rail lines that
+// touch the box; 02-rail-graph then redraws the lines along the OSM tracks.
+const HAS_SHAPES = fs.existsSync(path.join(DIR, 'shapes.txt'));
+const patterns = new Map(); // "group|stop,stop,..." -> trips
 {
   let curTrip = null, curInfo = null, rows = [];
   const flush = () => {
@@ -127,6 +131,10 @@ const W0 = 7 * 3600, W1 = 19 * 3600;
         if (!s) stopGroups.set(r[0], (s = new Set()));
         s.add(curInfo.g);
       }
+    }
+    if (!HAS_SHAPES && !isAccessOnly(groups[curInfo.g].mode) && rows.some((r) => { const s = stops.get(r[0]); return s && inBbox(s.lat, s.lon); })) {
+      const key = curInfo.g + '|' + rows.map((r) => r[0]).join(',');
+      patterns.set(key, (patterns.get(key) || 0) + 1);
     }
     if (curInfo.active) {
       for (let i = 0; i < rows.length - 1; i++) {
@@ -140,23 +148,59 @@ const W0 = 7 * 3600, W1 = 19 * 3600;
     }
   };
   const rl = readline.createInterface({ input: fs.createReadStream(path.join(DIR, 'stop_times.txt'), { highWaterMark: 1 << 20 }), crlfDelay: Infinity });
-  let first = true, n = 0;
+  // the columns are found in the header; the fast path is the layout of the Berlin and Hamburg feeds (stop_id second, departure_time last)
+  let first = true, n = 0, fast = true, SI = 1, DI = -1;
+  const splitCsv = (l) => {
+    if (!l.includes('"')) return l.split(',');
+    const out = []; let cur = '', q = false;
+    for (const ch of l) { if (ch === '"') q = !q; else if (ch === ',' && !q) { out.push(cur); cur = ''; } else cur += ch; }
+    out.push(cur);
+    return out;
+  };
   for await (const line of rl) {
-    if (first) { first = false; continue; }
+    if (first) {
+      first = false;
+      const h = line.replace(/^﻿/, '').trim().split(',');
+      SI = h.indexOf('stop_id'); DI = h.indexOf('departure_time');
+      if (h[0] !== 'trip_id' || SI < 0 || DI < 0) throw new Error('stop_times.txt needs trip_id first and the columns stop_id and departure_time');
+      fast = SI === 1 && DI === h.length - 1;
+      continue;
+    }
     n++;
     const i = line.indexOf(',');
     const tid = line.slice(0, i);
     if (tid !== curTrip) { flush(); curTrip = tid; curInfo = tripInfo.get(tid); rows = []; }
     if (!curInfo) continue;
-    const j = line.indexOf(',', i + 1);
-    let sid = line.slice(i + 1, j);
-    if (sid.charCodeAt(0) === 34) sid = sid.slice(1, -1);
-    const dt = line.slice(line.lastIndexOf(',') + 1).trim();
+    let sid, dt;
+    if (fast) {
+      const j = line.indexOf(',', i + 1);
+      sid = line.slice(i + 1, j);
+      if (sid.charCodeAt(0) === 34) sid = sid.slice(1, -1);
+      dt = line.slice(line.lastIndexOf(',') + 1).trim();
+    } else {
+      const f = splitCsv(line);
+      sid = f[SI]; dt = (f[DI] ?? '').trim();
+    }
     const p = dt.split(':');
     rows.push([sid, p.length === 3 ? (+p[0]) * 3600 + (+p[1]) * 60 + (+p[2]) : -1]);
   }
   flush();
   console.log(`stop_times lines ${n}; stops with rail service ${stopGroups.size}; stops with departures ${depCount.size}`);
+}
+const pseudoPts = new Map();
+if (!HAS_SHAPES) {
+  let k = 0;
+  for (const [key, count] of patterns) {
+    const bar = key.indexOf('|'), g = Number(key.slice(0, bar));
+    const sid = 'p' + k++;
+    const d = shapeCount.get(g) || new Map();
+    shapeCount.set(g, d);
+    const m = d.get('0') || new Map();
+    d.set('0', m);
+    m.set(sid, count);
+    pseudoPts.set(sid, key.slice(bar + 1).split(',').map((id, seq) => { const s = stops.get(id); return s ? [s.lon, s.lat, seq] : null; }).filter(Boolean));
+  }
+  console.log(`no shapes.txt: ${patterns.size} stop sequences stand in for the shapes`);
 }
 
 // ---------- transit_access
@@ -264,8 +308,8 @@ for (const [g, dirs] of shapeCount) {
     });
   }
 }
-const shapePts = new Map();
-{
+const shapePts = pseudoPts;
+if (HAS_SHAPES) {
   const rl = readline.createInterface({ input: fs.createReadStream(path.join(DIR, 'shapes.txt'), { highWaterMark: 1 << 20 }), crlfDelay: Infinity });
   let first = true;
   for await (const line of rl) {
