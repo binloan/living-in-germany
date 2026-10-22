@@ -196,7 +196,7 @@ The browser asks `GET /api/cities` for the list and the silhouettes, then `GET /
 - `municipalities` must match the `city` values exactly, including case; a mismatch shows as 0 % coverage.
 - The pipeline builds the hexagon grid at H3 resolution 9 (`H3_RES` in `scripts/data/lib.mjs`, about 350 m across). The metric radii and the "about 350 m" in the Info dialog assume it; the browser and server read the resolution from the data.
 - A step that rewrites `sources/*.json` would put its first draft over your edits; use `writeSources`.
-- The timetable step reads any GTFS feed: the ZIP is unpacked by its central directory (feeds with entries over 4 GB work), `stop_times.txt` columns are found by name, and a feed without `shapes.txt` gets straight lines between the stops, which `02-rail-graph` then redraws along the OSM tracks. A nationwide feed is large (the gtfs.de feed is 295 MB and unpacks to 2.3 GB) and holds only a few weeks of service days; rebuild it shortly before a deploy.
+- The timetable step reads any GTFS feed: the ZIP is unpacked by its central directory (feeds with entries over 4 GB work), `stop_times.txt` columns are found by name (quoted fields are fine), and a feed without `shapes.txt`, or with one that holds only its header line, gets straight lines between the stops, which `02-rail-graph` then redraws along the OSM tracks. A nationwide feed is large (the gtfs.de feed is 295 MB and unpacks to 2.3 GB) and holds only a few weeks of service days; rebuild it shortly before a deploy.
 - Running the whole pipeline reproduces the results exactly (the first city's outputs were checked that way). After changing a shared script, rerun `--all` for your cities and compare the hashes in their golden tests.
 
 ## 5. Checklist

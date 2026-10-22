@@ -119,7 +119,8 @@ const stopGroups = new Map(); // stop_id -> Set(group idx) (all days)
 const W0 = 7 * 3600, W1 = 19 * 3600;
 // A feed without shapes.txt (the nationwide gtfs.de feed) gets one straight-line shape per distinct stop sequence of the rail lines that
 // touch the box; 02-rail-graph then redraws the lines along the OSM tracks.
-const HAS_SHAPES = fs.existsSync(path.join(DIR, 'shapes.txt'));
+// a shapes.txt with only its header line (one regional feed ships it so) counts as missing
+const HAS_SHAPES = fs.existsSync(path.join(DIR, 'shapes.txt')) && fs.statSync(path.join(DIR, 'shapes.txt')).size > 200;
 const patterns = new Map(); // "group|stop,stop,..." -> trips
 {
   let curTrip = null, curInfo = null, rows = [];
@@ -160,7 +161,7 @@ const patterns = new Map(); // "group|stop,stop,..." -> trips
   for await (const line of rl) {
     if (first) {
       first = false;
-      const h = line.replace(/^﻿/, '').trim().split(',');
+      const h = line.replace(/^﻿/, '').trim().split(',').map((c) => c.replace(/^"|"$/g, ''));
       SI = h.indexOf('stop_id'); DI = h.indexOf('departure_time');
       if (h[0] !== 'trip_id' || SI < 0 || DI < 0) throw new Error('stop_times.txt needs trip_id first and the columns stop_id and departure_time');
       fast = SI === 1 && DI === h.length - 1;
@@ -168,7 +169,8 @@ const patterns = new Map(); // "group|stop,stop,..." -> trips
     }
     n++;
     const i = line.indexOf(',');
-    const tid = line.slice(0, i);
+    let tid = line.slice(0, i);
+    if (tid.charCodeAt(0) === 34) tid = tid.slice(1, -1); // some feeds quote every field
     if (tid !== curTrip) { flush(); curTrip = tid; curInfo = tripInfo.get(tid); rows = []; }
     if (!curInfo) continue;
     let sid, dt;
@@ -176,7 +178,7 @@ const patterns = new Map(); // "group|stop,stop,..." -> trips
       const j = line.indexOf(',', i + 1);
       sid = line.slice(i + 1, j);
       if (sid.charCodeAt(0) === 34) sid = sid.slice(1, -1);
-      dt = line.slice(line.lastIndexOf(',') + 1).trim();
+      dt = line.slice(line.lastIndexOf(',') + 1).trim().replace(/^"|"$/g, '');
     } else {
       const f = splitCsv(line);
       sid = f[SI]; dt = (f[DI] ?? '').trim();
