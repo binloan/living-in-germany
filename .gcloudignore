@@ -6,25 +6,22 @@
 .env
 .env.*
 /.impeccable/
+/skill-observations/
+/reports/
+/research_notes/
 /.claude/
 node_modules/
 /src/
 /scripts/
 /public/
-/cities/*/raw/
-/cities/*/cache/
-/cities/*/runtime/
-/cities/*/seed/
-/cities/*/sources/
-/cities/*/steps/
-/cities/*/test/
-/cities/ratings/
-/cities/private/
-/cities/research/
-/cities/*/research/
-/cities/*/*.md
-/cities/.gitignore
-/cities/*.md
+# cities/ is an allowlist: only cities.json and, per city, city.json and generated/ are uploaded. Everything else a city folder
+# holds (raw, cache, seed, steps, tests, notes, other folders) stays out without being named here.
+/cities/*
+!/cities/cities.json
+!/cities/*/
+/cities/*/*
+!/cities/*/city.json
+!/cities/*/generated/
 /cities.example/
 /*.md
 /tsconfig.json

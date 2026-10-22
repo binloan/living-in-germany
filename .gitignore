@@ -33,5 +33,7 @@ Thumbs.db
 npm-debug.log*
 *.log
 
-# agent skill logs
+# agent skill logs and scratch folders
 /skill-observations/
+/reports/
+/research_notes/
