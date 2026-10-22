@@ -148,7 +148,7 @@ const patterns = new Map(); // "group|stop,stop,..." -> trips
     }
   };
   const rl = readline.createInterface({ input: fs.createReadStream(path.join(DIR, 'stop_times.txt'), { highWaterMark: 1 << 20 }), crlfDelay: Infinity });
-  // the columns are found in the header; the fast path is the layout of the Berlin and Hamburg feeds (stop_id second, departure_time last)
+  // the columns are found in the header; the fast path is the common layout (stop_id second, departure_time last), which needs no field splitting
   let first = true, n = 0, fast = true, SI = 1, DI = -1;
   const splitCsv = (l) => {
     if (!l.includes('"')) return l.split(',');
