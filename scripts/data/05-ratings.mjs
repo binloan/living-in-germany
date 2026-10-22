@@ -30,8 +30,10 @@ async function loadProvider() {
   const name = process.env.RATINGS_PROVIDER;
   if (!name) { console.error('RATINGS_PROVIDER is not set in .env. Pick a ratings service: copy scripts/data/ratings/template.mjs, fill it in and name it there.'); process.exit(1); }
   if (!/^[\w-]+(\/[\w-]+)?$/.test(name)) { console.error(`RATINGS_PROVIDER "${name}" is not a provider name (letters, digits, - and _, optionally pack/<name>)`); process.exit(1); }
-  // `pack/<name>` is your own provider in cities/ratings/ (private, with the cities); a bare name is one of scripts/data/ratings/
-  const file = name.startsWith('pack/') ? path.join(CITIES, 'ratings', `${name.slice(5)}.mjs`) : path.join(path.dirname(fileURLToPath(import.meta.url)), 'ratings', `${name}.mjs`);
+  // `pack/<name>` is your own provider: a file `<name>.mjs` in the folder RATINGS_PACK_DIR names (relative to the app folder; cities/ratings/ when
+  // it is not set); a bare name is one of scripts/data/ratings/
+  const packDir = process.env.RATINGS_PACK_DIR ? path.resolve(process.cwd(), process.env.RATINGS_PACK_DIR) : path.join(CITIES, 'ratings');
+  const file = name.startsWith('pack/') ? path.join(packDir, `${name.slice(5)}.mjs`) : path.join(path.dirname(fileURLToPath(import.meta.url)), 'ratings', `${name}.mjs`);
   if (!fs.existsSync(file)) { console.error(`No provider at ${path.relative(process.cwd(), file)}`); process.exit(1); }
   return import(pathToFileURL(file).href);
 }

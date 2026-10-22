@@ -15,7 +15,7 @@ cities/<id>/metrics.json      the city's own descriptions of its data sources
 cities/<id>/seed/ sources/    hand-kept inputs and the source descriptions shown in the app
 cities/<id>/steps/            the scripts that know where this city's data comes from
 cities/<id>/test/             optional tests of your city (npm run test:cities)
-cities/ratings/<name>.mjs     optional restaurant-ratings providers (RATINGS_PROVIDER=pack/<name>)
+cities/ratings/<name>.mjs     optional restaurant-ratings providers (RATINGS_PROVIDER=pack/<name>; another folder: RATINGS_PACK_DIR)
 ```
 
 In `example/steps/`: `areas.mjs` (areas and hex grid), `zones.mjs` (price zones), `transit.mjs` (lines and stops), `metrics.mjs` (one number per hex and metric). They write the files a real city's steps write; replace what they read, keep what they write. `_synthetic.mjs` holds the invented geography and is not needed once the data is real.
