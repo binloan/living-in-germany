@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CACHE, GEN, SEED, USER_AGENT, readJson, writeJson } from './lib.mjs';
+import { imageRank } from './image-ranking.mjs';
 
 const CACHE_DIR = path.join(CACHE, 'images');
 fs.mkdirSync(CACHE_DIR, { recursive: true });
@@ -82,9 +83,6 @@ async function info(names) {
 
 const plain = (html) => (html ?? '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/\s+/g, ' ').trim();
 const SKIP = /karte|map\b|wappen|logo|flagge|plan\b|schild|tafel|grab|stolperstein|portr|poster|plakat|screenshot|diagram|panorama|innen|interior|detail|ausschnitt|luftbild|satellit|portal|grundriss|skizze|historisch|zeichnung|stich|beilage|kanalisation|nacht|night|bahnsteig|bahnhof ?[-_ ]?(innen|halle)|u-bahn|s-bahn|triebzug|stra(ß|ss)enbahn|tram\b|\bbus\b|bvg|haltestelle|treppe|keller|orgel|altar|kanzel|decke|saal|foyer|flur|zimmer|b(ü|u)ro|lobby|eingang|tunnel|garage|friedhof|\b(1[0-9]|20)xx\b|\b(18|19[0-6])\d\b/i;
-// what Commons says about a file itself: quality marks and street / park / building views help, other kinds of picture hurt
-const CAT_GOOD = /quality images|featured pictures|valued images|^(streets|squares|parks|buildings|street views|lakes|rivers|canals|residential buildings|houses|villages|cityscapes|views|bridges|churches|castles|palaces|gardens|promenades|shorelines) |street view|cityscape|views of /i;
-const CAT_BAD = /interior|maps|drawings|prints|engravings|historical|historic images|old |aerial|night|signs|plaques|memorial|monuments? |sculptures|statues|details|vehicles|trains|buses|trams|people|events|demonstrations|stolpersteine|cemeter|graves|portraits|museum|exhibitions|logos|diagrams|posters|advertis|animals|plants|flowers|food|graffiti|tunnels|platforms|construction|ruins|u-bahn|s-bahn|railway/i;
 
 /** Landscape JPEG, free licence, big enough to look good, no map/logo/portrait. */
 function usable(name, ii) {
@@ -122,9 +120,7 @@ for (const z of zones) {
     for (const n of fromArticle) cand.set(n, 0);
     for (const n of near) if (!cand.has(n.name)) cand.set(n.name, n.dist);
     const meta = await info([...cand.keys()]);
-    // lower is better: article images and Commons quality / street-view categories win, far away or odd subjects lose
-    const rank = (n, dist, v) => (fromArticle.includes(n) ? -30 + fromArticle.indexOf(n) * 1.5 : 0) + dist / 60 - 25 * v.cats.filter((c) => CAT_GOOD.test(c)).length - 30 * v.cats.filter((c) => CAT_BAD.test(c)).length;
-    const ok = [...cand.entries()].map(([n, dist]) => ({ n, v: meta.get(n) && usable(n, meta.get(n)), dist })).filter((x) => x.v).map((x) => ({ ...x, rank: rank(x.n, x.dist, x.v) })).sort((a, b) => a.rank - b.rank);
+    const ok = [...cand.entries()].map(([n, dist]) => ({ n, v: meta.get(n) && usable(n, meta.get(n)), dist })).filter((x) => x.v).map((x) => ({ ...x, rank: imageRank(x.n, x.dist, x.v.cats, fromArticle) })).sort((a, b) => a.rank - b.rank);
     pool[z.id] = ok.slice(0, 10).map((x) => ({ n: x.n, u: x.v.u.replace(/\?.*$/, ''), by: x.v.by }));
     picks = [];
     for (const x of ok) {
