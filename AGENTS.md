@@ -51,7 +51,7 @@ Read `ADDING_A_CITY.md` for the details. The path, in short:
 5. **Write `steps/zones.mjs`:** the price zones (the area one average rent counts for) and the zone of every hex.
 6. **One step per metric** that has no shared step. Shared steps (`scripts/data/metrics/*.mjs`) cover transit from a GTFS feed, centre distance, OpenStreetMap amenities and green space, landmarks, and the Zensus 2022 grid for density, building age and population age (the grid exists for all of Germany). A step ends with `writeMetric(id, { [h3 id]: number }, { unit, note })` and lists itself in `pipeline.steps`.
 7. **Describe your sources:** `sources/_shared.json` and `sources/<metric>.json` (name, URL, license, attribution, date accessed, note) and `metrics.json` for the metric texts. Every number in the app must trace to a cited source.
-8. **Build and check:** `npm run data -- --all`, then `npm test` and `npm run test:cities`. The spread test (`test/scoring-spread.test.mjs`) runs for every listed city: each metric must spread over its scale, and the overall score must tell places apart. A failure usually means a wrong unit, a wrong join, or a count where a rate was meant. Fix the step first; only if the data is right and the city lies outside the shared scales is it a decision for a human.
+8. **Build and check:** `npm run data -- --all`, then `npm test` and `npm run test:cities`. The spread test (`test/scoring-spread.test.mjs`) runs for every listed city: each metric must spread over its scale (a source with few areas declares `sourceAreas` in the city's `metrics.json`), and the overall score must tell places apart. A failure usually means a wrong unit, a wrong join, or a count where a rate was meant. Fix the step first; only if the data is right and the city lies outside the shared scales is it a decision for a human.
 
 Rules that apply to every city:
 
@@ -65,7 +65,7 @@ Rules that apply to every city:
 
 ## Restaurant ratings
 
-The restaurants metric needs ratings from a service the builder chooses; the repository ships none. `scripts/data/ratings/template.mjs` states the contract (a provider returns the ratings and review counts of the restaurants around a point). Put a provider in `scripts/data/ratings/<name>.mjs` or `cities/ratings/<name>.mjs`, set `RATINGS_PROVIDER` (`<name>` or `pack/<name>`), run `npm run data:ratings`. Read the service's terms first: some forbid storing or showing their data. The run is metered (a monthly request counter) and its results are costly to recreate; do not delete `cities/<id>/cache/ratings/`. Without a provider the metric is simply left out.
+The restaurants metric needs ratings from a service the builder chooses; the repository ships none. `scripts/data/ratings/template.mjs` states the contract (a provider returns the ratings and review counts of the restaurants around a point). Put a provider in `scripts/data/ratings/<name>.mjs` or `cities/ratings/<name>.mjs` (another folder: set `RATINGS_PACK_DIR`), set `RATINGS_PROVIDER` (`<name>` or `pack/<name>`), run `npm run data:ratings`. Read the service's terms first: some forbid storing or showing their data. The run is metered (a monthly request counter) and its results are costly to recreate; do not delete `cities/<id>/cache/ratings/`. Without a provider the metric is simply left out.
 
 ## Maintaining the code
 
