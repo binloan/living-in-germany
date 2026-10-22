@@ -85,10 +85,11 @@ export function weightedAccess(cells, stops, radiusM = 700) {
 /**
  * Multimodal transit access. entries: [{lat, lon, g, mode, dph}] = departures/h of line group g at a stop.
  * Per cell, per line group: best (modeWeight * min(dph, cap) * (1 - dist/radius)) over entries within radius;
- * raw = sum of group contributions + modeBonus * (distinct modes among contributing groups - 1).
+ * raw = sum of group contributions + modeBonus * (distinct modes among contributing groups - 1). Bus and ferry (B, F) add their lines
+ * but not a mode: the bonus rewards a mix of rail kinds, and every bus stop would otherwise earn it.
  * @returns { out: {[cellId]: number}, detail(i) -> [{g, contribution}] sorted desc }
  */
-export function multimodalAccess(cells, entries, { radiusM = 1000, plateauM = 250, cap = 12, modeWeight = { R: 2.5, S: 1.5, U: 1.5, T: 1.0 }, modeBonus = 5 } = {}) {
+export function multimodalAccess(cells, entries, { radiusM = 1000, plateauM = 250, cap = 12, modeWeight = { R: 2.5, S: 1.5, U: 1.5, T: 1.0, B: 0.5, F: 0.5 }, modeBonus = 5, noBonus = ['B', 'F'] } = {}) {
   const grid = buildGrid(entries);
   const out = {};
   const cellGroups = (i) => {
@@ -106,7 +107,7 @@ export function multimodalAccess(cells, entries, { radiusM = 1000, plateauM = 25
     const best = cellGroups(i);
     let sum = 0;
     const modes = new Set();
-    for (const b of best.values()) if (b.c > 0) { sum += b.c; modes.add(b.mode); }
+    for (const b of best.values()) if (b.c > 0) { sum += b.c; if (!noBonus.includes(b.mode)) modes.add(b.mode); }
     out[cells.ids[i]] = sum + (modes.size > 1 ? modeBonus * (modes.size - 1) : 0);
   }
   return { out, detail: (i) => [...cellGroups(i)].map(([g, b]) => ({ g, contribution: b.c })).sort((a, b) => b.contribution - a.contribution) };

@@ -18,7 +18,12 @@ const DEFAULT_COLOR = { S: '#008D4F', U: '#0065AE', T: '#D81E05', R: '#E3001B' }
 const MODE_ORDER = { S: 0, U: 1, T: 2, R: 3 };
 // which route type codes of the feed are which kind of line: pipeline.gtfs.routeTypes of the manifest
 if (!GTFS.routeTypes) throw new Error('pipeline.gtfs.routeTypes is missing in the manifest: which route types of the feed are S, U, T and R lines');
-const modeOf = (t) => routeMode(GTFS.routeTypes, t);
+// kinds that count for transit_access only (B bus, F ferry): pipeline.gtfs.accessRouteTypes, same shape as routeTypes. They are neither
+// drawn as lines nor listed as stations, and a city without the key scores as before.
+const ACCESS = GTFS.accessRouteTypes ?? {};
+if (Object.keys(ACCESS).some((k) => !['B', 'F'].includes(k))) throw new Error('pipeline.gtfs.accessRouteTypes may only name B (bus) and F (ferry)');
+const modeOf = (t) => routeMode(GTFS.routeTypes, t) ?? routeMode(ACCESS, t);
+const isAccessOnly = (mode) => mode in ACCESS;
 
 // ---------- download + unzip
 await download(GTFS_URL, ZIP);
@@ -51,7 +56,7 @@ for (const t of readCsv('trips.txt')) {
   const g = routeGroup.get(t.route_id);
   if (g == null) continue;
   tripInfo.set(t.trip_id, { g, service: t.service_id, active: false });
-  if (t.shape_id) {
+  if (t.shape_id && !isAccessOnly(groups[g].mode)) {
     const d = shapeCount.get(g) || new Map();
     shapeCount.set(g, d);
     const dk = t.direction_id || '0';
@@ -116,10 +121,12 @@ const W0 = 7 * 3600, W1 = 19 * 3600;
   let curTrip = null, curInfo = null, rows = [];
   const flush = () => {
     if (!curInfo || !rows.length) return;
-    for (const r of rows) {
-      let s = stopGroups.get(r[0]);
-      if (!s) stopGroups.set(r[0], (s = new Set()));
-      s.add(curInfo.g);
+    if (!isAccessOnly(groups[curInfo.g].mode)) {
+      for (const r of rows) {
+        let s = stopGroups.get(r[0]);
+        if (!s) stopGroups.set(r[0], (s = new Set()));
+        s.add(curInfo.g);
+      }
     }
     if (curInfo.active) {
       for (let i = 0; i < rows.length - 1; i++) {
@@ -153,7 +160,8 @@ const W0 = 7 * 3600, W1 = 19 * 3600;
 }
 
 // ---------- transit_access
-const TRANSIT_NOTE = 'Multimodal transit-access score. For every hex centre and every line (a mode plus line name, e.g. S|S7, U|U2, T|M4, R|RE1) the best stop within 1,000 m (a 12 minute walk) that has departures of that line between 07:00 and 19:00 on a typical Tuesday of the feed is chosen; its departures per hour (count / 12, capped at 12 per line) are multiplied by a mode weight (regional rail 2.5, S-Bahn 1.5, U-Bahn 1.5, tram 1.0) and by a distance factor that is 1 up to 250 m and then falls linearly to 0 at 1,000 m. The score is the sum over all lines plus a bonus of 5 points for every additional distinct mode beyond the first among the contributing lines (0 when only one mode), so a station with tram, S-Bahn, U-Bahn and regional services scores far higher than one frequent line; cells without service score 0. VBB GTFS.';
+const ACCESS_WEIGHTS = [['B', 'bus', 0.5], ['F', 'ferry', 0.5]].filter(([k]) => k in ACCESS).map(([, n, w]) => `${n} ${w}`);
+const TRANSIT_NOTE = 'Multimodal transit-access score. For every hex centre and every line (a mode plus line name, e.g. S|S7, U|U2, T|M4, R|RE1) the best stop within 1,000 m (a 12 minute walk) that has departures of that line between 07:00 and 19:00 on a typical Tuesday of the feed is chosen; its departures per hour (count / 12, capped at 12 per line) are multiplied by a mode weight (regional rail 2.5, S-Bahn 1.5, U-Bahn 1.5, tram 1.0' + (ACCESS_WEIGHTS.length ? ', ' + ACCESS_WEIGHTS.join(', ') : '') + ') and by a distance factor that is 1 up to 250 m and then falls linearly to 0 at 1,000 m. The score is the sum over all lines plus a bonus of 5 points for every additional distinct rail mode beyond the first among the contributing lines (0 when only one mode)' + (ACCESS_WEIGHTS.length ? ', buses and ferries earn no bonus' : '') + ', so a station with tram, S-Bahn, U-Bahn and regional services scores far higher than one frequent line; cells without service score 0. Source: ' + CITY.texts.timetable + '.';
 const cells = loadCells();
 const entries = []; // one per (stop, line group) with departures in the window
 for (const [sid, m] of depCount) {

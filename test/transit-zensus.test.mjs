@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { routeMode } from '../scripts/data/metrics/transit_lib.mjs';
+import { routeMode, multimodalAccess } from '../scripts/data/metrics/transit_lib.mjs';
 import { laeaToLonLat, lonLatToLaea } from '../scripts/data/zensus.mjs';
 import { cityDirs } from './helpers/paths.mjs';
 
@@ -18,6 +18,16 @@ test('route types: a city says its own codes, a kind without codes is never draw
   assert.equal(routeMode({ U: [] }, 1), null);
 });
 
+test('bus and ferry lines add to transit access but earn no mode bonus', () => {
+  const cells = { ids: ['a'], lat: [53.5], lon: [10] };
+  const at = (mode, g, dph = 6) => ({ lat: 53.5, lon: 10, g, mode, dph });
+  const score = (entries) => multimodalAccess(cells, entries).out.a;
+  assert.equal(score([at('S', 'S1')]), 9);
+  assert.equal(score([at('B', 'B5')]), 3);
+  assert.equal(score([at('S', 'S1'), at('B', 'B5'), at('F', 'F62')]), 15, 'S 9 + bus 3 + ferry 3, no bonus');
+  assert.equal(score([at('S', 'S1'), at('U', 'U1')]), 23, 'S 9 + U 9 + 5 for the second rail mode');
+});
+
 test('every city lists only kinds of line it also gives route types for, and the other way round', () => {
   const kinds = ['S', 'U', 'T', 'R'];
   for (const dir of cityDirs) {
@@ -25,6 +35,7 @@ test('every city lists only kinds of line it also gives route types for, and the
     const named = Object.keys(c.modes);
     assert.ok(named.length && named.every((m) => kinds.includes(m)), `${id}: modes are S, U, T or R`);
     assert.deepEqual(Object.keys(c.pipeline.gtfs.routeTypes).sort(), named.slice().sort(), `${id}: route types for exactly the listed kinds`);
+    assert.ok(Object.keys(c.pipeline.gtfs.accessRouteTypes ?? {}).every((k) => ['B', 'F'].includes(k)), `${id}: accessRouteTypes name only B and F`);
     assert.ok(c.texts.modeList, `${id}: texts.modeList`);
   }
 });
