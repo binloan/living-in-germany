@@ -4,8 +4,9 @@
 // So a street full of average places and a street with a few outstanding ones both score, a street full of outstanding ones scores most.
 import path from 'node:path';
 import fs from 'node:fs';
-import { CACHE, haversineM, loadAreas, loadCells, readJson, writeMetric } from '../lib.mjs';
+import { CACHE, haversineM, loadAreas, loadCells, readJson, writeMetric, writeSources } from '../lib.mjs';
 import { loadRestaurants } from '../lib_restaurants.mjs';
+import { combineRestaurantAccess } from '../restaurant_quality.mjs';
 
 const QFILE = path.join(CACHE, 'ratings', 'quality.json');
 if (!fs.existsSync(QFILE)) {
@@ -24,10 +25,7 @@ for (const r of restaurants) {
   if (!bk.has(k)) bk.set(k, []);
   bk.get(k).push(r);
 }
-const q = areas.map((f) => {
-  const a = quality[f.properties.id]?.avg;
-  return a == null ? 0.1 : Math.min(1, Math.max(0.1, (a - 4.0) / 0.7));
-});
+const ratings = areas.map((f) => quality[f.properties.id]?.avg ?? null);
 
 const raw = {};
 cells.ids.forEach((h, i) => {
@@ -36,10 +34,21 @@ cells.ids.forEach((h, i) => {
   for (let di = -1; di <= 1; di++) for (let dj = -2; dj <= 2; dj++) {
     for (const r of bk.get(`${bi + di},${bj + dj}`) ?? []) if (haversineM(la, lo, r.lat, r.lon) <= RADIUS) n++;
   }
-  raw[h] = n * q[cells.area[i]];
+  raw[h] = combineRestaurantAccess(n, ratings[cells.area[i]]);
 });
 
 writeMetric('restaurants', raw, {
   unit: 'restaurants x quality',
   note: `OSM restaurants within ${RADIUS} m of the hex centre, times a quality factor from 0.1 to 1 per area: the average rating of the area's 20 most popular restaurants (ratings shrunk towards 4.0 for places with few reviews), 4.0 stars or less = 0.1 up to 4.7 stars = 1. Zero means no restaurant mapped nearby.`,
 });
+
+writeSources('restaurants.json', JSON.stringify([
+  {
+    name: 'OpenStreetMap: restaurants',
+    url: 'https://overpass-api.de/api/interpreter',
+    license: 'Open Database License (ODbL) 1.0',
+    attribution: '© OpenStreetMap contributors (https://www.openstreetmap.org/copyright)',
+    accessed: new Date().toISOString().slice(0, 10),
+    note: 'Restaurant positions used for the access-density component; data as of access date.',
+  },
+], null, 2));
