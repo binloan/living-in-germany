@@ -50,8 +50,8 @@ for (const d of defs) {
   if (d.dynamic) continue;
   const f = path.join(METRICS_DIR, `${d.id}.json`);
   if (!fs.existsSync(f)) { console.warn(`missing metric ${d.id}: skipped`); meta.missing = true; continue; }
-  // one fixed ruler for every city, so a 70 means the same everywhere; a ruler taken from the city's own spread would not
-  if (!Array.isArray(d.scale) || d.scale.length !== 2) throw new Error(`metric ${d.id} has no scale in data/metrics.json: scores of different cities would not be comparable`);
+  // the ruler is the metric's shared default unless the city's metrics.json sets its own (see resolveMetricDefs)
+  if (!Array.isArray(d.scale) || d.scale.length !== 2) throw new Error(`metric ${d.id} has no scale in data/metrics.json`);
   const m = readJson(f);
   const raw = new Array(N).fill(null);
   for (const [h, v] of Object.entries(m.raw)) {

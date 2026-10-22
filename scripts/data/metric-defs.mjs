@@ -16,8 +16,12 @@ export function resolveMetricDefs(shared, overrides, texts, cityId) {
     if (!shared.some((d) => d.id === id)) throw new Error(`${cityId}: metrics.json describes "${id}", which is not a metric`);
   }
   return shared.map((d) => {
-    // the ruler is the same in every city; a city that could move it would make its scores incomparable
-    if (overrides[d.id] && 'scale' in overrides[d.id]) throw new Error(`${cityId}: metrics.json may not set the scale of "${d.id}"; it is shared so that scores compare between cities`);
+    // the app shows one city at a time, so a score is relative to the city: a city whose data lies in another range than the
+    // shared default may set its own ruler for that metric
+    if (overrides[d.id] && 'scale' in overrides[d.id]) {
+      const s = overrides[d.id].scale;
+      if (!Array.isArray(s) || s.length !== 2 || !s.every(Number.isFinite) || s[0] === s[1]) throw new Error(`${cityId}: the scale of "${d.id}" in metrics.json must be two different numbers [from, to]`);
+    }
     const m = { ...d, ...overrides[d.id] };
     for (const k of TEXT_FIELDS) if (typeof m[k] === 'string') m[k] = fillTexts(m[k], texts, `${cityId}: metric ${d.id}, ${k}`);
     return m;

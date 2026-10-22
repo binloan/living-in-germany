@@ -34,11 +34,16 @@ test('a metric the city does not describe keeps the shared definition, and falls
   assert.equal(safety.proxy, undefined);
 });
 
-test('every metric that is scored has one fixed scale, the same ruler for every city', () => {
+test('every metric that is scored has a default scale, and a city may set its own', () => {
   for (const d of shared.filter((m) => !m.dynamic)) {
     assert.ok(Array.isArray(d.scale) && d.scale.length === 2 && d.scale[0] !== d.scale[1], `${d.id} needs a scale in data/metrics.json`);
   }
-  assert.throws(() => resolveMetricDefs(shared, { safety: { scale: [0, 1] } }, city.texts, 'example'), /may not set the scale of "safety"/);
+  const own = resolveMetricDefs(shared, { safety: { scale: [2500, 9000] } }, city.texts, 'example');
+  assert.deepEqual(own.find((d) => d.id === 'safety').scale, [2500, 9000]);
+  assert.deepEqual(own.find((d) => d.id === 'calm').scale, shared.find((d) => d.id === 'calm').scale, 'other metrics keep the shared scale');
+  for (const bad of [[1], [1, 1], ['a', 2], 5, [1, null]]) {
+    assert.throws(() => resolveMetricDefs(shared, { safety: { scale: bad } }, city.texts, 'example'), /scale of "safety" in metrics.json must be two different numbers/);
+  }
 });
 
 test('every city (the sample one and yours) has the texts the shared descriptions ask for', () => {

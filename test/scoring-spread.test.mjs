@@ -1,7 +1,7 @@
 // The scores must keep telling places apart. The overall score stays unrounded because many hexes share a metric score (a police
-// figure counts for a whole district); a fixed scale that is too wide or too narrow would squeeze the scores together or pile
-// them up at 0 or 100. The scales in data/metrics.json are the same for every city, so this runs for every listed city that has
-// generated data. A city that breaks these bounds has a unit or join problem, or lies outside the shared scales: see
+// figure counts for a whole district); a scale that is too wide or too narrow would squeeze the scores together or pile
+// them up at 0 or 100. A metric is scored on its scale in data/metrics.json unless the city sets its own, and this runs for every listed city
+// that has generated data. A city that breaks these bounds has a unit or join problem, or needs a scale of its own: see
 // ADDING_A_CITY.md, step 8 ("Check that the scores work in this city").
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
