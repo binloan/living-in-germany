@@ -1,6 +1,7 @@
 // Metric `density` (lower is better) for any city: residents per hectare, from the Zensus 2022 100 m grid, which exists for all of Germany.
 // Every grid cell is exactly 1 ha, so the residents of the cells in a hex divided by the hex area is the gross density. The grid lists
-// inhabited cells only, so a hex without a cell has no residents (density 0).
+// inhabited cells only, so a hex without a cell has no residents (density 0). A city whose area holds a lot of forest, water or airport
+// can leave those hexes out instead (pipeline.densityOmitEmpty in its manifest): otherwise half of its hexes score a perfect 100.
 import { cellArea } from 'h3-js';
 import { CITY, loadCells, writeMetric, writeSources } from '../lib.mjs';
 import { ZENSUS, ZENSUS_ATTRIBUTION, ZENSUS_LICENSE, populationGrid } from '../zensus.mjs';
@@ -8,7 +9,8 @@ import { ZENSUS, ZENSUS_ATTRIBUTION, ZENSUS_LICENSE, populationGrid } from '../z
 const { byHex } = await populationGrid(CITY.bbox);
 const cells = loadCells();
 const raw = {};
-for (const h of cells.ids) raw[h] = (byHex.get(h) || 0) / (cellArea(h, 'm2') / 10000);
+const omitEmpty = CITY.pipeline.densityOmitEmpty === true;
+for (const h of cells.ids) if (!omitEmpty || byHex.has(h)) raw[h] = (byHex.get(h) || 0) / (cellArea(h, 'm2') / 10000);
 
 writeMetric('density', raw, {
   unit: 'residents/ha',

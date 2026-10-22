@@ -12,8 +12,12 @@ import { CITIES, ROOT, cityIndex } from './helpers/paths.mjs';
 
 const read = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 // A source that publishes one value per large district (a city survey with 13 districts) cannot give 15 different scores: the city's
-// metric file then says how many source areas there are (`sourceAreas`), and that number is the bound instead.
-const grain = (metric, generated) => Math.min(15, generated.find((x) => x.id === metric)?.sourceAreas ?? 15);
+// metric file then says how many source areas there are (`sourceAreas`), and three quarters of that number is the bound instead (a few
+// districts may share a value).
+const grain = (metric, generated) => {
+  const areas = generated.find((x) => x.id === metric)?.sourceAreas;
+  return areas ? Math.min(15, Math.ceil(areas * 0.75)) : 15;
+};
 const defs = read(path.join(ROOT, 'data', 'metrics.json')).filter((d) => !d.dynamic && !d.overlay);
 
 const sd = (v) => { const m = v.reduce((a, b) => a + b, 0) / v.length; return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length); };
