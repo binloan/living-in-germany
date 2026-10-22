@@ -19,13 +19,13 @@ test('route types: a city says its own codes, a kind without codes is never draw
 });
 
 test('route types: a code can be limited to routes whose short name matches, so S-Bahn and regional trains of one code part', () => {
-  const frankfurt = { S: [{ code: 2, name: '^S\\d+$' }], R: [2] };
-  assert.equal(routeMode(frankfurt, 2, 'S6'), 'S');
-  assert.equal(routeMode(frankfurt, 2, 'S14'), 'S');
-  assert.equal(routeMode(frankfurt, 2, 'RB58'), 'R');
-  assert.equal(routeMode(frankfurt, 2, 'SB12'), 'R', 'a name that only starts with S is not an S-Bahn line');
-  assert.equal(routeMode(frankfurt, 2, undefined), 'R');
-  assert.equal(routeMode(frankfurt, 3, 'S6'), null, 'the name only counts together with the code');
+  const oneCode = { S: [{ code: 2, name: '^S\\d+$' }], R: [2] };
+  assert.equal(routeMode(oneCode, 2, 'S6'), 'S');
+  assert.equal(routeMode(oneCode, 2, 'S14'), 'S');
+  assert.equal(routeMode(oneCode, 2, 'RB58'), 'R');
+  assert.equal(routeMode(oneCode, 2, 'SB12'), 'R', 'a name that only starts with S is not an S-Bahn line');
+  assert.equal(routeMode(oneCode, 2, undefined), 'R');
+  assert.equal(routeMode(oneCode, 3, 'S6'), null, 'the name only counts together with the code');
 });
 
 test('bus and ferry lines add to transit access but earn no mode bonus', () => {
