@@ -127,7 +127,7 @@ writeSources('green.json', JSON.stringify([
     url: 'https://overpass-api.de/api/interpreter',
     license: 'Open Database License (ODbL) 1.0',
     attribution: '© OpenStreetMap contributors (https://www.openstreetmap.org/copyright)',
-    accessed: '2026-10-18',
+    accessed: new Date().toISOString().slice(0, 10),
     note: 'Queried by tile for leisure/landuse/natural/waterway tags (see metric note); data as of access date.',
   },
 ], null, 2));

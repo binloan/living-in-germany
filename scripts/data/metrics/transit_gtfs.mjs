@@ -190,6 +190,7 @@ const cleanName = (raw) => {
   n = n.replace(/\s+(Bhf|Bf)(?=\/|$)/, '');
   return n.trim();
 };
+const MERGE_M = GTFS.stationMergeM ?? 150;
 const keyName = (n) => n.split('/')[0].trim().toLowerCase();
 const stopModes = (sid) => new Set([...(stopGroups.get(sid) || [])].map((g) => groups[g].mode));
 const clusters = new Map(); // cluster key -> { members:[stop], lat, lon, name, modes:Set, lines:Set }
@@ -215,12 +216,12 @@ let list = [...clusters.values()].map((c) => {
   const name = cleanName(rawName);
   return { lat, lon, name, key: keyName(name), groups: c.groups, n: c.members.length, hasParent: !!a };
 });
-// merge same-name clusters within 150 m (union-find)
+// merge same-name clusters within pipeline.gtfs.stationMergeM (default 150 m; the S and U platforms of one interchange can be further apart)
 const par = list.map((_, i) => i);
 const find = (i) => (par[i] === i ? i : (par[i] = find(par[i])));
 const grid = buildGrid(list);
 list.forEach((c, i) => {
-  grid.query(c.lat, c.lon, 150, (j) => { if (j !== i && list[j].key === c.key) par[find(j)] = find(i); });
+  grid.query(c.lat, c.lon, MERGE_M, (j) => { if (j !== i && list[j].key === c.key) par[find(j)] = find(i); });
 });
 const merged = new Map();
 list.forEach((c, i) => {
