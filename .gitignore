@@ -32,3 +32,6 @@ scripts/data/ratings/local/
 Thumbs.db
 npm-debug.log*
 *.log
+
+# agent skill logs
+/skill-observations/
