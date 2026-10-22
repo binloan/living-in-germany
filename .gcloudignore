@@ -19,6 +19,10 @@ node_modules/
 /cities/*/steps/
 /cities/*/test/
 /cities/ratings/
+/cities/private/
+/cities/research/
+/cities/*/research/
+/cities/*/*.md
 /cities/.gitignore
 /cities/*.md
 /cities.example/
