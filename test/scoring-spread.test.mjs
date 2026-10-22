@@ -11,6 +11,9 @@ import { weightedFit, NONE } from '../src/scoring.ts';
 import { CITIES, ROOT, cityIndex } from './helpers/paths.mjs';
 
 const read = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+// A source that publishes one value per large district (a city survey with 13 districts) cannot give 15 different scores: the city's
+// metric file then says how many source areas there are (`sourceAreas`), and that number is the bound instead.
+const grain = (metric, generated) => Math.min(15, generated.find((x) => x.id === metric)?.sourceAreas ?? 15);
 const defs = read(path.join(ROOT, 'data', 'metrics.json')).filter((d) => !d.dynamic && !d.overlay);
 
 const sd = (v) => { const m = v.reduce((a, b) => a + b, 0) / v.length; return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length); };
@@ -20,6 +23,7 @@ for (const id of cityIndex.cities) {
   const file = path.join(CITIES, id, 'generated', 'cells.json');
   const skip = !fs.existsSync(file) && `no generated data for ${id}: run \`npm run data -- --all --city ${id}\``;
   const cells = skip ? null : read(file);
+  const generatedDefs = skip ? [] : read(path.join(CITIES, id, 'generated', 'metrics.json'));
 
   test(`${id}: every metric spreads over the scale, not squeezed together, not piled up at one end`, { skip }, () => {
     for (const d of defs) {
@@ -29,7 +33,7 @@ for (const id of cityIndex.cities) {
       assert.ok(sd(s) > 12, `${id}/${d.id}: standard deviation ${sd(s).toFixed(1)}`);
       // landmarks is a bonus most places do not get, so most of the city is 0 by design
       if (d.id !== 'landmarks') assert.ok(at(0) < 0.55 && at(100) < 0.45, `${id}/${d.id}: ${(at(0) * 100).toFixed(0)}% at 0, ${(at(100) * 100).toFixed(0)}% at 100`);
-      assert.ok(new Set(s).size >= 15, `${id}/${d.id}: only ${new Set(s).size} different scores`);
+      assert.ok(new Set(s).size >= grain(d.id, generatedDefs), `${id}/${d.id}: only ${new Set(s).size} different scores`);
     }
   });
 

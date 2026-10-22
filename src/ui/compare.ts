@@ -34,7 +34,7 @@ type Spot = { id: string; name: string; sub?: string; lat: number; lon: number; 
 
 const METRIC_ICON: Record<string, IconName> = {
   transit_access: 'train', commute: 'route', center: 'crosshair', price: 'euro', safety: 'shield', calm: 'volumeOff',
-  building_age: 'building', density: 'users', wohnlage: 'home', amenities: 'bag', restaurants: 'restaurant', landmarks: 'landmark',
+  perceived_safety: 'shield', building_age: 'building', density: 'users', wohnlage: 'home', amenities: 'bag', restaurants: 'restaurant', landmarks: 'landmark',
 };
 
 /** Side-by-side scores of the saved start spots. Click a score for the value behind it. */

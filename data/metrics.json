@@ -66,6 +66,19 @@
     "hint": "Offences per 100,000 residents"
   },
   {
+    "id": "perceived_safety",
+    "label": "Perceived safety at night",
+    "unit": "%",
+    "better": "higher",
+    "decimals": 0,
+    "scale": [
+      60,
+      90
+    ],
+    "weight": 60,
+    "hint": "Residents who feel safe after dark where they live"
+  },
+  {
     "id": "calm",
     "label": "Calmness",
     "unit": "dB",

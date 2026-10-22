@@ -39,6 +39,7 @@ Before writing anything, go through the metrics in `data/metrics.json` and write
 | `landmarks` | `metrics/geo_landmarks.mjs`, after `04-pois.mjs` and a `seed/pois.json` | |
 | `restaurants` | `metrics/env_restaurants.mjs`, after `05-ratings.mjs` (needs a ratings provider of your choice, see `scripts/data/ratings/template.mjs`) | |
 | `safety` | | Police statistics of that city |
+| `perceived_safety` | | Optional. How safe residents say they feel, from a representative city survey, as a percentage. A city that publishes no police figures below city level can still have it. It is a different thing from `safety`: never fill one from the other. The cells of a survey district share its value, so say so in the metric text |
 | `calm` | | The noise map of that state |
 | `building_age`, `density`, `pop_age` (overlay) | `metrics/zensus_building_age.mjs`, `zensus_density.mjs`, `zensus_pop_age.mjs`: the Zensus 2022 100 m grid, the same method for all of Germany (2022 census, coarser building classes, no filling of gaps) | Only if the city publishes something better. A state may publish its own (an environment atlas, a residents' register); use the grid for Potsdam only; its steps are in `cities/berlin/steps/` and read the grid through `scripts/data/zensus.mjs` |
 | `wohnlage` | | Only if the city publishes a comparable residential-quality index |
@@ -134,6 +135,7 @@ Then describe the metric for this city in `cities/<id>/metrics.json`, keyed by m
 - `info`: the text behind the (i) button; a metric without one shows its short `hint`.
 - `only`: the metric exists for this municipality only; other places get no value.
 - `proxy`: `{ city, metric }`, the stand-in described in step 1.
+- `sourceAreas`: how many areas the source publishes (a survey with 13 districts). The scoring-spread test then asks for that many different scores instead of 15. Say in `info` that every hex of an area shows its value.
 - `cityWide`: names a place for which the step gives one value to the whole place (Sampleburg's crime figure, say). The app only uses it to say so in the priority's note; the step itself has to produce that value.
 
 Shared texts in `data/metrics.json` contain `{placeholders}` that come from `texts` in the manifest. You do not edit that file.

@@ -141,7 +141,8 @@ const fullAreas = readJson(path.join(CACHE, 'areas.geo.json'));
 const unions = [];
 for (const name of byDistrict.keys()) {
   const parts = fullAreas.features.filter((f) => f.properties.district === name);
-  const merged = turf.union(turf.featureCollection(parts.map((f) => turf.feature(f.geometry))));
+  // a district of one area (Bergen-Enkheim, Harheim ...) has nothing to union
+  const merged = parts.length === 1 ? turf.feature(parts[0].geometry) : turf.union(turf.featureCollection(parts.map((f) => turf.feature(f.geometry))));
   if (merged) unions.push({ type: 'Feature', geometry: merged.geometry, properties: { name } });
 }
 // One outline per district, so the map can keep a selected district sharp while the rest fades.
