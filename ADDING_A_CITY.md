@@ -168,7 +168,7 @@ Consider adding golden tests for the new city in `cities/<id>/test/` (they run w
 
 ### Step 9. Deploy
 
-`npm run deploy` builds and uploads `cities/cities.json` and each listed city's `city.json` and `generated/` (`.gcloudignore` keeps `raw`, `cache`, `runtime`, `seed`, `sources`, `steps` and `test` out) and stops if a listed city has no `generated/cells.json`. Rents of the new city go to the Firestore collection named in its manifest, in the same database as the other cities, so give it its own collection name. `PRICE_FILE` and `PRICE_COLLECTION` in `.env` belong to the default city only; other cities use `cities/<id>/runtime/prices.json` locally. After the first deploy: `npm run seed:prices -- --city <id> --url https://<your-app>.appspot.com`.
+`npm run deploy` builds and uploads `cities/cities.json` and each listed city's `city.json` and `generated/` (`.gcloudignore` is an allowlist for `cities/`: everything else stays out of the upload) and stops if a listed city has no `generated/cells.json`. Rents of the new city go to the Firestore collection named in its manifest, in the same database as the other cities, so give it its own collection name. `PRICE_FILE` and `PRICE_COLLECTION` in `.env` belong to the default city only; other cities use `cities/<id>/runtime/prices.json` locally. After the first deploy: `npm run seed:prices -- --city <id> --url https://<your-app>.appspot.com`.
 
 ## 3. Where things go: the contract in one picture
 
