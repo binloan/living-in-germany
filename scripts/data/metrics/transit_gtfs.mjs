@@ -22,7 +22,7 @@ if (!GTFS.routeTypes) throw new Error('pipeline.gtfs.routeTypes is missing in th
 // drawn as lines nor listed as stations, and a city without the key scores as before.
 const ACCESS = GTFS.accessRouteTypes ?? {};
 if (Object.keys(ACCESS).some((k) => !['B', 'F'].includes(k))) throw new Error('pipeline.gtfs.accessRouteTypes may only name B (bus) and F (ferry)');
-const modeOf = (t) => routeMode(GTFS.routeTypes, t) ?? routeMode(ACCESS, t);
+const modeOf = (t, name) => routeMode(GTFS.routeTypes, t, name) ?? routeMode(ACCESS, t, name);
 const isAccessOnly = (mode) => mode in ACCESS;
 
 // ---------- download + unzip
@@ -36,7 +36,7 @@ const readCsv = (f) => parse(fs.readFileSync(path.join(DIR, f)), { columns: true
 // ---------- routes / trips
 const routeInfo = new Map(); // route_id -> { mode, name, color }
 for (const r of readCsv('routes.txt')) {
-  const mode = modeOf(Number(r.route_type));
+  const mode = modeOf(Number(r.route_type), r.route_short_name);
   if (!mode) continue;
   routeInfo.set(r.route_id, { mode, name: r.route_short_name, color: (r.route_color || '').replace('#', '').toUpperCase() });
 }

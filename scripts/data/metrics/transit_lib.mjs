@@ -13,10 +13,13 @@ export const distM = dist;
 
 /**
  * The kind of line (S, U, T, R) a route type code of a GTFS feed stands for, or null (bus, ferry, ...). `routeTypes` is the city's
- * `pipeline.gtfs.routeTypes`: per kind a list of codes or [from, to] ranges. The first kind that matches wins, so a narrow code can
- * sit inside a wider range (109 S-Bahn inside the rail range 100 to 199).
+ * `pipeline.gtfs.routeTypes`: per kind a list of codes, [from, to] ranges or { code, name } entries. The first kind that matches wins,
+ * so a narrow code can sit inside a wider range (109 S-Bahn inside the rail range 100 to 199). `{ code: 2, name: "^S\d" }` matches
+ * that code only when the route's short name matches the pattern, for feeds that give S-Bahn and regional trains one code.
  */
-export const routeMode = (routeTypes, code) => Object.keys(routeTypes).find((m) => routeTypes[m].some((r) => (Array.isArray(r) ? code >= r[0] && code <= r[1] : code === r))) ?? null;
+const hit = (r, code, name) => (Array.isArray(r) ? code >= r[0] && code <= r[1]
+  : typeof r === 'object' ? code === r.code && new RegExp(r.name).test(name ?? '') : code === r);
+export const routeMode = (routeTypes, code, name) => Object.keys(routeTypes).find((m) => routeTypes[m].some((r) => hit(r, code, name))) ?? null;
 
 /** Bucket grid over points {lat, lon, ...}. Query returns indices within radiusM. */
 export function buildGrid(points) {

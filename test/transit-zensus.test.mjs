@@ -18,6 +18,16 @@ test('route types: a city says its own codes, a kind without codes is never draw
   assert.equal(routeMode({ U: [] }, 1), null);
 });
 
+test('route types: a code can be limited to routes whose short name matches, so S-Bahn and regional trains of one code part', () => {
+  const frankfurt = { S: [{ code: 2, name: '^S\\d+$' }], R: [2] };
+  assert.equal(routeMode(frankfurt, 2, 'S6'), 'S');
+  assert.equal(routeMode(frankfurt, 2, 'S14'), 'S');
+  assert.equal(routeMode(frankfurt, 2, 'RB58'), 'R');
+  assert.equal(routeMode(frankfurt, 2, 'SB12'), 'R', 'a name that only starts with S is not an S-Bahn line');
+  assert.equal(routeMode(frankfurt, 2, undefined), 'R');
+  assert.equal(routeMode(frankfurt, 3, 'S6'), null, 'the name only counts together with the code');
+});
+
 test('bus and ferry lines add to transit access but earn no mode bonus', () => {
   const cells = { ids: ['a'], lat: [53.5], lon: [10] };
   const at = (mode, g, dph = 6) => ({ lat: 53.5, lon: 10, g, mode, dph });
