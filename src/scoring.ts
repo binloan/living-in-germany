@@ -61,10 +61,14 @@ export function commuteScoreOf(min: number) {
   return 0;
 }
 
-/** Rent score on the rent per m² (so the size of the flat never changes the ranking): 100 at <= 10 EUR/m², 0 at >= 25 EUR/m². */
+/**
+ * Rent score on the rent per m² (so the size of the flat never changes the ranking): 100 at or below `best`, 0 at or above `worst`.
+ * The defaults are the shared scale; a city whose rents lie elsewhere sets its own in its metrics.json, so a score tells how a rent
+ * compares within the city.
+ */
 export const PRICE_BEST = 10;
 export const PRICE_WORST = 25;
-export const priceScoreOf = (eurPerSqm: number) => Math.min(100, Math.max(0, ((PRICE_WORST - eurPerSqm) / (PRICE_WORST - PRICE_BEST)) * 100));
+export const priceScoreOf = (eurPerSqm: number, best = PRICE_BEST, worst = PRICE_WORST) => Math.min(100, Math.max(0, ((worst - eurPerSqm) / (worst - best)) * 100));
 
 /** A spot from a district the list does not have yet beats the best spot by up to this many points. */
 export const GROUP_TOLERANCE = 8;

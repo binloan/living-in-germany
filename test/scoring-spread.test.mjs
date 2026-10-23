@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { weightedFit, NONE } from '../src/scoring.ts';
+import { weightedFit, priceScoreOf, NONE } from '../src/scoring.ts';
 import { CITIES, ROOT, cityIndex } from './helpers/paths.mjs';
 
 const read = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
@@ -39,6 +39,18 @@ for (const id of cityIndex.cities) {
       if (d.id !== 'landmarks') assert.ok(at(0) < 0.55 && at(100) < 0.45, `${id}/${d.id}: ${(at(0) * 100).toFixed(0)}% at 0, ${(at(100) * 100).toFixed(0)}% at 100`);
       assert.ok(new Set(s).size >= grain(d.id, generatedDefs), `${id}/${d.id}: only ${new Set(s).size} different scores`);
     }
+  });
+
+  // rent is scored in the browser from the seeded averages: the seed has to fill the city's rent scale, or the layer is one colour
+  const seedFile = path.join(CITIES, id, 'seed', 'rents.json');
+  const rentDef = skip ? null : generatedDefs.find((d) => d.id === 'price');
+  test(`${id}: the seeded rents spread over the rent scale`, { skip: skip || !fs.existsSync(seedFile) || !rentDef?.scale }, () => {
+    const [best, worst] = rentDef.scale;
+    const scores = read(seedFile).zones.map((z) => priceScoreOf(z.value, best, worst)).sort((a, b) => a - b);
+    const at = (p) => scores[Math.floor((scores.length - 1) * p)];
+    assert.ok(at(0.95) - at(0.05) > 40, `${id}/price: the middle 90% of the zones span only ${(at(0.95) - at(0.05)).toFixed(0)} points`);
+    assert.ok(at(0.05) < 40 && at(0.95) > 60, `${id}/price: scores ${at(0.05).toFixed(0)}..${at(0.95).toFixed(0)} do not reach both ends of the scale`);
+    assert.ok(scores.filter((x) => x === 0).length / scores.length < 0.2 && scores.filter((x) => x === 100).length / scores.length < 0.2, `${id}/price: too many zones pile up at one end`);
   });
 
   test(`${id}: the overall score tells places apart, for all priorities and for a few`, { skip }, () => {

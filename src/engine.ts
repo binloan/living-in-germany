@@ -1,7 +1,7 @@
 import { cellToLatLng, gridDisk, latLngToCell } from 'h3-js';
 import { commuteMinutes, type CommuteTimes } from './api';
 import { busy } from './busy';
-import { NONE, commuteScoreOf, pickTop, priceScoreOf, shade, shadeRange, weightedFit, type ShadeRange } from './scoring';
+import { NONE, PRICE_BEST, PRICE_WORST, commuteScoreOf, pickTop, priceScoreOf, shade, shadeRange, weightedFit, type ShadeRange } from './scoring';
 
 export { PRICE_BEST, PRICE_WORST, commuteScoreOf, priceScoreOf } from './scoring';
 import type { Dataset } from './data';
@@ -225,12 +225,13 @@ export class Engine {
     this.missingZones = this.zones.filter((z, k) => !byZone.has(k) && !z.exempt);
     this.priceAny = byZone.size > 0;
     // 3. per cell
+    const [best, worst] = this.ds.metrics.find((m) => m.id === 'price')?.scale ?? [PRICE_BEST, PRICE_WORST];
     const avg = new Map(this.priceClusters.map((c) => [c.zone, c.value]));
     for (let i = 0; i < this.n; i++) {
       const v = avg.get(this.zoneIdx[i]);
       if (v == null) { this.priceVal[i] = NONE; this.priceScore[i] = NONE; continue; }
       this.priceVal[i] = v;
-      this.priceScore[i] = priceScoreOf(v);
+      this.priceScore[i] = priceScoreOf(v, best, worst);
     }
     if (recompute) this.recompute();
     else this.emit();

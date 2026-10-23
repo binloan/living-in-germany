@@ -47,10 +47,11 @@
     "unit": "€/mo",
     "better": "lower",
     "decimals": 0,
+    "scale": [10, 25],
     "weight": 85,
     "dynamic": true,
     "hint": "Average rent from the prices people report",
-    "info": "Average rent, from prices people put on the map as euros per m² (click the map, enter a price from a source you trust). Everyone sees the same prices. A price counts for its whole area: {zoneKinds}. Several reports in one area are averaged. The score uses the price per m², so the size of your flat never changes the ranking; the size you expect (Profile tab) only turns it into the monthly rent shown. To stay fair, rent only counts in the overall score once EVERY area has a price; until then the layer shows which areas still need one.{rentGaps} Cheaper is better: 100 points at 10 €/m² or less, 0 at 25 €/m² or more."
+    "info": "Average rent, from prices people put on the map as euros per m² (click the map, enter a price from a source you trust). Everyone sees the same prices. A price counts for its whole area: {zoneKinds}. Several reports in one area are averaged. The score uses the price per m², so the size of your flat never changes the ranking; the size you expect (Profile tab) only turns it into the monthly rent shown. To stay fair, rent only counts in the overall score once EVERY area has a price; until then the layer shows which areas still need one.{rentGaps} Cheaper is better: 100 points at {scaleFrom} €/m² or less, 0 at {scaleTo} €/m² or more."
   },
   {
     "id": "safety",

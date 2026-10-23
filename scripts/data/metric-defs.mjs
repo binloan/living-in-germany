@@ -1,5 +1,6 @@
 // The metric definitions of one city: the shared definitions (data/metrics.json) with the city's own descriptions on top
-// (cities/<id>/metrics.json), and the {placeholders} of the shared texts filled from the city's `texts`.
+// (cities/<id>/metrics.json), and the {placeholders} of the shared texts filled from the city's `texts` ({scaleFrom} and {scaleTo}
+// come from the metric's scale).
 
 const TEXT_FIELDS = ['label', 'hint', 'info', 'note'];
 
@@ -23,7 +24,9 @@ export function resolveMetricDefs(shared, overrides, texts, cityId) {
       if (!Array.isArray(s) || s.length !== 2 || !s.every(Number.isFinite) || s[0] === s[1]) throw new Error(`${cityId}: the scale of "${d.id}" in metrics.json must be two different numbers [from, to]`);
     }
     const m = { ...d, ...overrides[d.id] };
-    for (const k of TEXT_FIELDS) if (typeof m[k] === 'string') m[k] = fillTexts(m[k], texts, `${cityId}: metric ${d.id}, ${k}`);
+    // a text may quote the metric's own ruler, so it stays right when a city sets another one
+    const own = Array.isArray(m.scale) ? { ...texts, scaleFrom: String(m.scale[0]), scaleTo: String(m.scale[1]) } : texts;
+    for (const k of TEXT_FIELDS) if (typeof m[k] === 'string') m[k] = fillTexts(m[k], own, `${cityId}: metric ${d.id}, ${k}`);
     return m;
   });
 }

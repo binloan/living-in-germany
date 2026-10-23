@@ -7,6 +7,8 @@ export interface Metric {
   weight: number;
   hint: string;
   dynamic?: boolean;
+  /** the ruler of a rent metric: EUR per m² that scores 100 and 0 (other metrics are scored when the data is built) */
+  scale?: [number, number];
   fmt?: 'year';
   /** another metric's score stands in for missing cells of this city */
   proxy?: { city: string; metric: string };

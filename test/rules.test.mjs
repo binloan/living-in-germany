@@ -26,6 +26,13 @@ test('rent score matches the method text and ignores the flat size', () => {
   assert.equal(priceScoreOf(17.5), 50);
 });
 
+test('rent score follows the scale a city sets, not the shared one', () => {
+  assert.equal(priceScoreOf(18, 18, 27), 100);
+  assert.equal(priceScoreOf(27, 18, 27), 0);
+  assert.equal(priceScoreOf(22.5, 18, 27), 50);
+  assert.equal(priceScoreOf(30, 18, 27), 0);
+});
+
 // "Top matches: the five best-scoring hexagons, at least 1.5 km apart"
 test('pickTop: best first, at least the separation apart, slivers skipped', () => {
   // a 30 x 30 grid, 500 m apart; the score rises towards the south-east corner

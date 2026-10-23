@@ -35,7 +35,8 @@ test('a metric the city does not describe keeps the shared definition, and falls
 });
 
 test('every metric that is scored has a default scale, and a city may set its own', () => {
-  for (const d of shared.filter((m) => !m.dynamic)) {
+  // rent is scored in the browser, but on a scale of the same kind
+  for (const d of shared.filter((m) => !m.dynamic || m.id === 'price')) {
     assert.ok(Array.isArray(d.scale) && d.scale.length === 2 && d.scale[0] !== d.scale[1], `${d.id} needs a scale in data/metrics.json`);
   }
   const own = resolveMetricDefs(shared, { safety: { scale: [2500, 9000] } }, city.texts, 'example');
@@ -44,6 +45,14 @@ test('every metric that is scored has a default scale, and a city may set its ow
   for (const bad of [[1], [1, 1], ['a', 2], 5, [1, null]]) {
     assert.throws(() => resolveMetricDefs(shared, { safety: { scale: bad } }, city.texts, 'example'), /scale of "safety" in metrics.json must be two different numbers/);
   }
+});
+
+test('the rent text quotes the scale in use, so a city that sets its own still reads true', () => {
+  const info = (over) => resolveMetricDefs(shared, over, city.texts, 'example').find((d) => d.id === 'price').info;
+  const [from, to] = shared.find((d) => d.id === 'price').scale;
+  assert.match(info({}), new RegExp(`100 points at ${from} €/m² or less, 0 at ${to} €/m² or more`));
+  assert.match(info({ price: { scale: [18, 27] } }), /100 points at 18 €\/m² or less, 0 at 27 €\/m² or more/);
+  assert.throws(() => resolveMetricDefs(shared, { price: { scale: [20, 20] } }, city.texts, 'example'), /scale of "price"/);
 });
 
 test('every city (the sample one and yours) has the texts the shared descriptions ask for', () => {
