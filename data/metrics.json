@@ -206,7 +206,7 @@
     "weight": 0,
     "overlay": true,
     "hint": "Green and water within 500 m",
-    "info": "Share of the 500 m circle around the hex centre covered by parks, forest, meadows, gardens, cemeteries and water (OpenStreetMap). Street trees are not counted. Map overlay only, not part of Fit.",
+    "info": "Share of the 500 m circle around the hex centre covered by parks, forest, meadows, gardens, cemeteries and water (OpenStreetMap). Street trees are not counted. Map overlay only, not part of the overall score.",
     "note": "Share of the 500 m around a spot that is green or water."
   }
 ]

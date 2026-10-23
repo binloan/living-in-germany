@@ -372,6 +372,9 @@ dialog.sources h2 { font-size: 17px; font-weight: 700; }
 .src-body { overflow: auto; overflow-x: hidden; overflow-wrap: anywhere; padding: 4px 20px 20px; } /* notes hold long unbroken strings such as shop=supermarket|convenience|... */
 .src-body section { margin-top: 18px; }
 .src-body h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.src-city-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 14px; border-radius: 10px; background: var(--plate-2); }
+.src-city-row strong { font-size: 16px; font-weight: 700; }
+.src-city .muted { margin-top: 8px; }
 .method li { padding: 4px 0; color: var(--ink-2); }
 .src li { display: flex; flex-direction: column; gap: 1px; padding: 8px 0; border-top: 1px solid var(--line); }
 .src a { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); text-decoration-color: var(--line-strong); text-underline-offset: 3px; overflow-wrap: anywhere; }
