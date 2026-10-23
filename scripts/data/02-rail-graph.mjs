@@ -1,11 +1,18 @@
 // OpenStreetMap track network (rail incl. S-Bahn, subway, tram) -> cities/<id>/generated/rail-graph.json
 // Used by the server to lay commute routes exactly on the tracks. Run: node scripts/data/02-rail-graph.mjs
 import path from 'node:path';
-import { CITY, RAW, GEN, writeJson } from './lib.mjs';
+import { CITY, RAW, GEN, CACHE, writeJson } from './lib.mjs';
 import { overpass, tiles } from './lib_overpass.mjs';
-import { snapLeg } from '../../server/railsnap.js';
+import { snapLeg, traceLine } from '../../server/railsnap.js';
 
-const BBOX = [CITY.bbox.s, CITY.bbox.w, CITY.bbox.n, CITY.bbox.e]; // south, west, north, east
+// south, west, north, east. Lines are drawn inside the timetable box (pipeline.gtfs.bbox): where it reaches beyond the city box the tracks
+// are fetched for it too, or the lines would end in straight chords there. Such a download is cached apart from the city-box one.
+const GB = CITY.pipeline?.gtfs?.bbox;
+const WIDE = !!GB && (GB.s < CITY.bbox.s || GB.w < CITY.bbox.w || GB.n > CITY.bbox.n || GB.e > CITY.bbox.e);
+const BBOX = WIDE
+  ? [Math.min(GB.s, CITY.bbox.s), Math.min(GB.w, CITY.bbox.w), Math.max(GB.n, CITY.bbox.n), Math.max(GB.e, CITY.bbox.e)]
+  : [CITY.bbox.s, CITY.bbox.w, CITY.bbox.n, CITY.bbox.e];
+const CACHE_TAG = WIDE ? 'wide-' : '';
 const NETS = { rail: 'rail', light_rail: 'rail', subway: 'subway', tram: 'tram' };
 
 const ql = (b) => `[out:json][timeout:300];
@@ -20,7 +27,7 @@ out geom;`;
 const ways = new Map(); // osm way id -> { net, pts: [[lon, lat]] }
 let i = 0;
 for (const b of tiles(BBOX, 3, 2, 0.01)) {
-  const j = await overpass(ql(b), path.join(RAW, 'osm_rail', `tile-${i++}.json`));
+  const j = await overpass(ql(b), path.join(RAW, 'osm_rail', `tile-${CACHE_TAG}${i++}.json`));
   for (const el of j.elements ?? []) {
     if (el.type !== 'way' || !el.geometry || el.geometry.length < 2) continue;
     const net = NETS[el.tags?.railway];
@@ -34,12 +41,27 @@ const relQl = (b) => `[out:json][timeout:300];
 rel["route"~"^(train|light_rail|subway|tram)$"]["ref"](${b.join(',')});
 out body;`;
 const wayRefs = new Map(); // way id -> Set(ref)
+// A relation's `colour` is the line's own colour (S1 light blue, U2 red ...). Counted per network and line, the most common wins.
+const REL_NET = { train: 'rail', light_rail: 'rail', subway: 'subway', tram: 'tram' };
+const relColours = new Map(); // "net|ref" -> Map(colour -> relations)
+const hexColour = (c) => {
+  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(String(c ?? '').trim());
+  if (!m) return null;
+  const h = m[1].length === 3 ? [...m[1]].map((x) => x + x).join('') : m[1];
+  return '#' + h.toUpperCase();
+};
 i = 0;
 for (const b of tiles(BBOX, 3, 2, 0.01)) {
-  const j = await overpass(relQl(b), path.join(RAW, 'osm_rail', `rel-${i++}.json`));
+  const j = await overpass(relQl(b), path.join(RAW, 'osm_rail', `rel-${CACHE_TAG}${i++}.json`));
   for (const el of j.elements ?? []) {
     if (el.type !== 'relation' || !el.tags?.ref) continue;
     const ref = String(el.tags.ref).trim();
+    const col = hexColour(el.tags.colour ?? el.tags.color);
+    if (col && REL_NET[el.tags.route]) {
+      const k = REL_NET[el.tags.route] + '|' + ref;
+      const m = relColours.get(k) ?? relColours.set(k, new Map()).get(k);
+      m.set(col, (m.get(col) ?? 0) + 1);
+    }
     for (const m of el.members ?? []) {
       if (m.type !== 'way') continue;
       (wayRefs.get(m.ref) || wayRefs.set(m.ref, new Set()).get(m.ref)).add(ref);
@@ -288,16 +310,127 @@ if (fs.existsSync(linesFile)) {
     }
     return out3;
   }
+  // The pieces of a traced line overlap (every trip variant runs the same tracks): the shared stretches are drawn once and the rest is
+  // chained into polylines again.
+  function mergeParts(paths) {
+    const key = (p) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+    const pt = new Map(), adj = new Map(), seen = new Set();
+    const ek = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
+    const link = (a, b) => { (adj.get(a) ?? adj.set(a, new Set()).get(a)).add(b); };
+    for (const p of paths) {
+      for (let k = 1; k < p.length; k++) {
+        const a = key(p[k - 1]), b = key(p[k]);
+        if (a === b || seen.has(ek(a, b))) continue;
+        seen.add(ek(a, b)); pt.set(a, p[k - 1]); pt.set(b, p[k]); link(a, b); link(b, a);
+      }
+    }
+    const used = new Set(), out2 = [];
+    const walk = (start) => {
+      for (const first of adj.get(start)) {
+        if (used.has(ek(start, first))) continue;
+        const run = [start];
+        let prev = start, cur = first;
+        for (;;) {
+          used.add(ek(prev, cur));
+          run.push(cur);
+          if (adj.get(cur).size !== 2) break;
+          const next = [...adj.get(cur)].find((x) => x !== prev);
+          if (next == null || used.has(ek(cur, next))) break;
+          prev = cur; cur = next;
+        }
+        out2.push(run.map((k) => pt.get(k)));
+      }
+    };
+    for (const [k, n] of adj) if (n.size !== 2) walk(k);
+    for (const k of adj.keys()) walk(k); // what is left are closed loops
+    return out2;
+  }
+  const colourOf = (mode, name) => {
+    const m = relColours.get(`${NET_OF_MODE[mode]}|${name}`);
+    const c = m ? [...m.entries()].sort((x, y) => y[1] - x[1])[0][0] : null;
+    // a near-white colour would vanish on the white casing
+    return c && Math.min(parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)) < 200 ? c : null;
+  };
+  const patternsFile = path.join(CACHE, 'line-patterns.json');
+  const patternsOf = new Map(); // "mode|name" -> stop sequences of its trips (only for a feed without shapes)
+  if (fs.existsSync(patternsFile)) for (const p of JSON.parse(fs.readFileSync(patternsFile, 'utf8'))) (patternsOf.get(p.mode + '|' + p.name) ?? patternsOf.set(p.mode + '|' + p.name, []).get(p.mode + '|' + p.name)).push(p);
+  const inBox = (s) => !GB || (s[1] >= GB.s && s[1] <= GB.n && s[0] >= GB.w && s[0] <= GB.e);
   let connectors = 0;
   const fc = JSON.parse(fs.readFileSync(linesFile, 'utf8'));
-  let osm = 0, kept = 0;
+  let osm = 0, kept = 0, traced = 0, gapCount = 0, bridgeCount = 0;
+  const gapLines = [];
   for (const feat of fc.features) {
     const mode = feat.properties.mode;
+    const pats = patternsOf.get(mode + '|' + feat.properties.name);
+    if (pats) {
+      const all = [];
+      let gaps = 0;
+      for (const p of pats) {
+        const runs = [];
+        let run = [];
+        for (const s of p.stops) { if (inBox(s)) run.push(s); else { if (run.length > 1) runs.push(run); run = []; } }
+        if (run.length > 1) runs.push(run);
+        for (const r of runs) {
+          const res = traceLine(CITY, mode, r, feat.properties.name);
+          if (res) { all.push(...res.parts); gaps += res.gaps; bridgeCount += res.bridged; }
+        }
+      }
+      if (all.length) {
+        feat.geometry = { type: 'MultiLineString', coordinates: mergeParts(all) };
+        traced++;
+        gapCount += gaps;
+        if (gaps) gapLines.push(`${mode} ${feat.properties.name}: ${gaps}`);
+        continue;
+      }
+    }
     const parts = feat.geometry.type === 'LineString' ? [feat.geometry.coordinates] : feat.geometry.coordinates;
     const edges = edgesByRef[NET_OF_MODE[mode]]?.get(feat.properties.name);
     if (edges && lenOf(edges) >= 0.6 * lenOf(parts)) { const joined = connect(edges); connectors += joined.length - edges.length; feat.geometry = { type: 'MultiLineString', coordinates: joined }; osm++; }
     else { const joined = connect(bridgeShapes(parts, mode, feat.properties.name)); shapeJoins += joined.length - parts.length; feat.geometry = { type: 'MultiLineString', coordinates: joined }; kept++; }
   }
+  // colours: the feed's own colour stands unless it tells the lines of a mode apart no better than one shared colour does; then the
+  // line's OSM colour is used where there is one. Regional trains keep one colour (OSM has none for most of them, or a pale one).
+  const featsOf = new Map();
+  for (const f of fc.features) (featsOf.get(f.properties.mode) ?? featsOf.set(f.properties.mode, []).get(f.properties.mode)).push(f);
+  let recoloured = 0;
+  for (const [mode, feats] of featsOf) {
+    if (mode === 'R') continue;
+    const flat = feats.length > 1 && new Set(feats.map((f) => String(f.properties.color).toUpperCase())).size === 1;
+    if (!flat) continue;
+    for (const f of feats) {
+      const c = colourOf(mode, f.properties.name);
+      if (c) { f.properties.color = c; recoloured++; }
+    }
+  }
   writeJson(linesFile, fc);
+  // Station markers sit on the line they belong to: a stop position can lie off the tracks (a terminus whose platform tracks OSM does not
+  // carry, a station of several stops whose mean falls between them). A marker within SNAP_STATION_M of one of its own lines moves onto it.
+  const SNAP_STATION_M = 200, ON_LINE_M = 20;
+  const stationsFile = path.join(GEN, 'stations.json');
+  if (fs.existsSync(stationsFile)) {
+    const sf = JSON.parse(fs.readFileSync(stationsFile, 'utf8'));
+    const kxs = M * Math.cos(sf.stops[0][0] * Math.PI / 180);
+    let moved = 0, farthest = 0;
+    for (const row of sf.stops) {
+      const [lat, lon, , modes, names] = row;
+      let best = null;
+      for (const f of fc.features) {
+        if (!names.includes(f.properties.name) || !modes.includes(f.properties.mode)) continue;
+        for (const part of f.geometry.coordinates) for (let k = 1; k < part.length; k++) {
+          const a = part[k - 1], b = part[k];
+          const px = lon * kxs, py = lat * M, ax = a[0] * kxs, ay = a[1] * M, bx = b[0] * kxs, by = b[1] * M;
+          const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy;
+          const u = L2 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L2)) : 0;
+          const d = Math.hypot(px - ax - u * vx, py - ay - u * vy);
+          if (!best || d < best.d) best = { d, q: [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u] };
+        }
+      }
+      if (best && best.d > ON_LINE_M && best.d <= SNAP_STATION_M) { row[0] = +best.q[1].toFixed(5); row[1] = +best.q[0].toFixed(5); moved++; farthest = Math.max(farthest, best.d); }
+    }
+    writeJson(stationsFile, sf);
+    console.log(`station markers: ${moved} moved onto their line (farthest ${Math.round(farthest)} m)`);
+  }
+  console.log(`line colours: ${recoloured} taken from the OSM route relations`);
+  console.log(`${traced} lines traced along the tracks through their stops (${bridgeCount} stop pairs where OSM has no connecting track were joined by a short connector, ${gapCount} left open${gapLines.length ? ': ' + gapLines.join(', ') : ''})`);
   console.log(`transit-lines.json: ${osm} lines redrawn from OSM tracks (${connectors} short connectors, longest ${Math.round(Math.max(0, ...connLens))} m, median ${Math.round(connLens.sort((x, y) => x - y)[connLens.length >> 1] ?? 0)} m), ${kept} keep the timetable shape (${shapeJoins} holes closed along the tracks)`);
 }

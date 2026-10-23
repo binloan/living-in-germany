@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { parse } from 'csv-parse/sync';
-import { CITY, RAW, GEN, download, loadCells, writeMetric, writeJson } from '../lib.mjs';
+import { CITY, RAW, GEN, CACHE, download, loadCells, writeMetric, writeJson } from '../lib.mjs';
 import { unzipTo } from './transit_unzip.mjs';
 import { distM, buildGrid, multimodalAccess, routeMode } from './transit_lib.mjs';
 
@@ -47,7 +47,8 @@ for (const [rid, r] of routeInfo) {
   const key = r.mode + '|' + r.name;
   let gi = groupIdx.get(key);
   if (gi == null) { gi = groups.length; groupIdx.set(key, gi); groups.push({ key, mode: r.mode, name: r.name, color: '' }); }
-  if (!groups[gi].color && /^[0-9A-F]{6}$/.test(r.color)) groups[gi].color = '#' + r.color;
+  // black and white are what a feed puts where it has no colour for the line
+  if (!groups[gi].color && /^[0-9A-F]{6}$/.test(r.color) && !/^(000000|FFFFFF)$/.test(r.color)) groups[gi].color = '#' + r.color;
   routeGroup.set(rid, gi);
 }
 const tripInfo = new Map(); // trip_id -> { g, service, active }
@@ -203,6 +204,28 @@ if (!HAS_SHAPES) {
     pseudoPts.set(sid, key.slice(bar + 1).split(',').map((id, seq) => { const s = stops.get(id); return s ? [s.lon, s.lat, seq] : null; }).filter(Boolean));
   }
   console.log(`no shapes.txt: ${patterns.size} stop sequences stand in for the shapes`);
+  // The stop sequences also go to 02-rail-graph, which lays each line along the OSM tracks through its stops. Per line the busiest
+  // sequences are taken until every stop of the line is covered (branches and short-turn variants show up as sequences of their own).
+  const perGroup = new Map();
+  for (const [key, count] of patterns) {
+    const bar = key.indexOf('|'), g = Number(key.slice(0, bar));
+    (perGroup.get(g) ?? perGroup.set(g, []).get(g)).push({ ids: key.slice(bar + 1).split(','), count });
+  }
+  const out = [];
+  for (const [g, list] of perGroup) {
+    list.sort((a, b) => b.count - a.count);
+    const covered = new Set();
+    let taken = 0;
+    for (const p of list) {
+      if (taken >= 12) break;
+      if (taken && !p.ids.some((id) => !covered.has(id))) continue;
+      p.ids.forEach((id) => covered.add(id));
+      taken++;
+      out.push({ mode: groups[g].mode, name: groups[g].name, count: p.count, stops: p.ids.map((id) => stops.get(id)).filter(Boolean).map((s) => [s.lon, s.lat]) });
+    }
+  }
+  fs.mkdirSync(CACHE, { recursive: true });
+  writeJson(path.join(CACHE, 'line-patterns.json'), out);
 }
 
 // ---------- transit_access
@@ -255,12 +278,17 @@ for (const sid of stopGroups.keys()) {
 }
 // compute position + display name per cluster
 let list = [...clusters.values()].map((c) => {
-  const a = c.anchor && c.anchor.type === '1' ? c.anchor : null;
-  const lat = a ? a.lat : c.members.reduce((x, m) => x + m.lat, 0) / c.members.length;
-  const lon = a ? a.lon : c.members.reduce((x, m) => x + m.lon, 0) / c.members.length;
-  const rawName = (a || c.members[0]).name;
+  const parent = c.anchor && c.anchor.type === '1' ? c.anchor : null;
+  let a = parent;
+  const mLat = c.members.reduce((x, m) => x + m.lat, 0) / c.members.length;
+  const mLon = c.members.reduce((x, m) => x + m.lon, 0) / c.members.length;
+  // a feed's parent station can lie hundreds of metres from the platforms its lines stop at: the platforms are where the tracks are
+  if (a && distM(a.lat, a.lon, mLat, mLon) > 100) a = null;
+  const lat = a ? a.lat : mLat;
+  const lon = a ? a.lon : mLon;
+  const rawName = (parent || c.members[0]).name;
   const name = cleanName(rawName);
-  return { lat, lon, name, key: keyName(name), groups: c.groups, n: c.members.length, hasParent: !!a };
+  return { lat, lon, name, key: keyName(name), groups: c.groups, n: c.members.length, hasParent: !!parent };
 });
 // merge same-name clusters within pipeline.gtfs.stationMergeM (default 150 m; the S and U platforms of one interchange can be further apart)
 const par = list.map((_, i) => i);
