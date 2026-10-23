@@ -13,6 +13,8 @@ import { rampRgba } from './ramp';
 import { icon } from './icons';
 import { chip } from './ui/chip';
 import { fmtEuro, fmtSqm, h, inkOn } from './util';
+import { lineLabels } from './linelabels';
+import { CHIP_RATIO, chipImage } from './linechips';
 import { BOOKMARK_COLORS } from './place';
 import type { PriceCluster, ZoneInfo } from './engine';
 import type { Mode, Poi } from './types';
@@ -353,16 +355,24 @@ export class MapView {
       paint: { 'text-color': '#2b3845', ...halo },
     });
 
-    // line badges along the line: white text on the line's own colour
+    // line labels along the track: lines that share tracks lie on top of each other, so a stretch gets one label with a chip (the
+    // line's own colour, white text) for every line that runs there; the busiest stretches are placed first
+    const labels = lineLabels(this.ds.lines.features);
+    const chipOf = new Map(this.ds.lines.features.map((f) => [`${f.properties.mode}|${f.properties.name}`, { name: f.properties.name, color: f.properties.color, ink: f.properties.ink }]));
+    for (const f of labels.features) {
+      const id = `lb:${f.properties.mode}:${f.properties.key}`;
+      if (map.hasImage(id)) continue;
+      map.addImage(id, chipImage(f.properties.key.split('|').map((n) => chipOf.get(`${f.properties.mode}|${n}`)!)), { pixelRatio: CHIP_RATIO });
+    }
+    map.addSource('line-labels', { type: 'geojson', data: labels as GeoJSON.FeatureCollection });
     const lineBadge = (id: string, mode: Mode, minzoom: number, spacing: number) =>
       map.addLayer({
-        id, type: 'symbol', source: 'lines', filter: ['==', ['get', 'mode'], mode], minzoom,
+        id, type: 'symbol', source: 'line-labels', filter: ['==', ['get', 'mode'], mode], minzoom,
         layout: {
-          'symbol-placement': 'line', 'symbol-spacing': spacing, 'text-field': ['get', 'name'], 'text-font': boldFont,
-          'text-size': z([10, 11], [14, 12.5]), 'text-rotation-alignment': 'viewport', 'text-pitch-alignment': 'viewport', 'text-keep-upright': true,
-          'text-padding': 4, 'text-max-angle': 50,
+          'symbol-placement': 'line', 'symbol-spacing': spacing, 'icon-image': ['concat', 'lb:', ['get', 'mode'], ':', ['get', 'key']],
+          'icon-size': z([10, 0.85], [14, 1]), 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport', 'icon-padding': 4,
+          'symbol-sort-key': ['-', 0, ['get', 'n']],
         },
-        paint: { 'text-color': ['get', 'ink'], 'text-halo-color': ['get', 'color'], 'text-halo-width': 3 },
       });
     lineBadge('badge-R', 'R', 10.2, 340);
     lineBadge('badge-S', 'S', 10.6, 300);
@@ -1036,11 +1046,13 @@ export class MapView {
     const map = this.map;
     // hovering a list entry quietens the whole transit network (unless a station or the routes of a spot are lit)
     const quiet = !lit && !!this.preview;
+    // a label names several lines: it is lit when one of them is
+    const litLabel = names && names.length ? (['any', ...names.map((n) => ['in', `"${n}"`, ['get', 'names']])] as maplibregl.ExpressionSpecification) : null;
     for (const m of MODES) {
       map.setPaintProperty(`lines-${m}`, 'line-opacity', lit ? ['case', lit, 1, 0.12] : quiet ? 0.2 : 1);
       map.setPaintProperty(`lines-casing-${m}`, 'line-opacity', lit ? ['case', lit, 0.95, 0.1] : quiet ? 0.15 : 0.95);
-      map.setFilter(`badge-${m}`, lit ? ['all', ['==', ['get', 'mode'], m], lit] : ['==', ['get', 'mode'], m]);
-      map.setPaintProperty(`badge-${m}`, 'text-opacity', quiet ? 0.2 : 1);
+      map.setFilter(`badge-${m}`, litLabel ? ['all', ['==', ['get', 'mode'], m], litLabel] : ['==', ['get', 'mode'], m]);
+      map.setPaintProperty(`badge-${m}`, 'icon-opacity', quiet ? 0.2 : 1);
     }
     const stationLit = names && names.length ? (['any', ...names.map((n) => ['in', `"${n}"`, ['get', 'lines']])] as maplibregl.ExpressionSpecification) : null;
     const stationBase = quiet ? 0.2 : 1;
